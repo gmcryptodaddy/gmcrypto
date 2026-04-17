@@ -40,13 +40,12 @@ export default function Navbar() {
             <Link key={cat} href={`/category/${cat.toLowerCase()}`}>{cat}</Link>
           ))}
         </div>
-
-<button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-  <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
-  <span className="toggle-track">
-    <span className="toggle-thumb" style={{ transform: isDark ? 'translateX(0)' : 'translateX(16px)' }} />
-  </span>
-</button>
+        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+          <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
+          <span className="toggle-track">
+            <span className="toggle-thumb" style={{ transform: isDark ? 'translateX(0)' : 'translateX(16px)' }} />
+          </span>
+        </button>
       </div>
     </nav>
   )
