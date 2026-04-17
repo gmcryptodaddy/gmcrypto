@@ -1,5 +1,5 @@
 import { defineConfig } from 'sanity'
-import { deskTool } from 'sanity/desk'
+import { structureTool } from 'sanity/structure'
 import { visionTool } from '@sanity/vision'
 import post from './sanity/post.schema'
 import author from './sanity/author.schema'
@@ -11,7 +11,7 @@ export default defineConfig({
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   basePath: '/studio',
   plugins: [
-    deskTool(),
+    structureTool(),
     visionTool(),
   ],
   schema: {
