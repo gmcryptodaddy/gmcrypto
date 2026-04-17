@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 
 const COIN_IDS = [
   'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
   'cardano', 'avalanche-2', 'dogecoin', 'tron', 'chainlink'
 ]
-
-const CATEGORIES = ['Markets', 'DeFi', 'NFTs', 'Regulation', 'Bitcoin', 'Ethereum', 'Layer 2', 'Web3']
 
 function formatPrice(price) {
   if (!price) return '$—'
@@ -51,7 +48,7 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Markets widget */}
       <div className="widget">
-        <div className="widget-title"><span>▸</span>Live Markets</div>
+        <div className="widget-title">Live Markets</div>
 
         {loading ? (
           <div style={{ padding: '20px 0', color: 'var(--text3)', fontSize: 12, textAlign: 'center' }}>
@@ -103,7 +100,7 @@ export default function Sidebar() {
 
       {/* Newsletter */}
       <div className="widget">
-        <div className="widget-title"><span>▸</span>GM Newsletter</div>
+        <div className="widget-title">GM Newsletter</div>
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
           Get the top crypto stories delivered every morning.
         </p>
@@ -126,18 +123,6 @@ export default function Sidebar() {
             <p className="newsletter-sub">No spam. Unsubscribe anytime.</p>
           </>
         )}
-      </div>
-
-      {/* Categories */}
-      <div className="widget">
-        <div className="widget-title"><span>▸</span>Categories</div>
-        <div className="category-list">
-          {CATEGORIES.map(cat => (
-            <Link key={cat} href={`/category/${cat.toLowerCase().replace(' ', '-')}`}>
-              <span className="category-pill">{cat}</span>
-            </Link>
-          ))}
-        </div>
       </div>
     </aside>
   )
