@@ -25,7 +25,7 @@ export default function Home({ featured, posts }) {
   return (
     <>
       <Head>
-        <title>[ gm crypto ] — Daily Crypto News & Market Insights</title>
+        <title>[ gm ] crypto news</title>
         <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" type="image/png" href="/logo.png" />
