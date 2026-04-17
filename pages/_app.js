@@ -6,6 +6,8 @@ export default function App({ Component, pageProps }) {
     <>
       <Head>
         <link rel="icon" type="image/png" href="/logo.png" />
+        <link rel="shortcut icon" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
       </Head>
       <Component {...pageProps} />
     </>
