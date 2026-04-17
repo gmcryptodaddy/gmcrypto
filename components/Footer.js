@@ -5,9 +5,12 @@ export default function Footer() {
     <>
       <footer className="footer">
         <div>
-          <div className="footer-logo">GM <span>Crypto</span></div>
+          <div className="footer-logo">
+            <img src="/logo-full.png" alt="[ gm crypto ]" />
+          </div>
           <p className="footer-desc">
-            GM!Your daily dose of crypto news, market analysis, and blockchain insights.
+            Your daily dose of crypto news, market analysis, and blockchain insights.
+            No hype. Just signal.
           </p>
         </div>
         <div className="footer-col">
@@ -29,7 +32,7 @@ export default function Footer() {
         </div>
       </footer>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} GM Crypto. Not financial advice.</span>
+        <span>© {new Date().getFullYear()} [ gm crypto ] — Not financial advice.</span>
         <span>Built with Next.js + Sanity</span>
       </div>
     </>
