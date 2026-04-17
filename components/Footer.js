@@ -10,7 +10,6 @@ export default function Footer() {
           </div>
           <p className="footer-desc">
             Your daily dose of crypto news, market analysis, and blockchain insights.
-            No hype. Just signal.
           </p>
         </div>
         <div className="footer-col">
