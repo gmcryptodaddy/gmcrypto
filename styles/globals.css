@@ -415,7 +415,7 @@ body.light .ticker-down { color: #f44336; }
   overflow-y: auto;
   overflow-x: hidden;
   height: 100%;
-  padding: 28px 0 28px 0;
+  padding: 28px 20px 28px 0;
 }
 .sidebar::-webkit-scrollbar { width: 3px; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
