@@ -8,10 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "15.3.0",
-    "react": "^19",
-    "react-dom": "^19",
-    "next-sanity": "^9.8.0",
+    "next": "14.2.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "next-sanity": "^7.1.4",
     "@sanity/image-url": "^1.0.2",
     "@portabletext/react": "^3.0.0",
     "sanity": "^3.88.0",
@@ -19,6 +19,6 @@
   },
   "devDependencies": {
     "eslint": "^8",
-    "eslint-config-next": "15.3.0"
+    "eslint-config-next": "14.2.3"
   }
 }
