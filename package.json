@@ -1,25 +1,24 @@
-export default {
-  name: 'author',
-  title: 'Author',
-  type: 'document',
-  fields: [
-    {
-      name: 'name',
-      title: 'Name',
-      type: 'string',
-      validation: Rule => Rule.required()
-    },
-    {
-      name: 'image',
-      title: 'Profile Image',
-      type: 'image',
-      options: { hotspot: true }
-    },
-    {
-      name: 'bio',
-      title: 'Bio',
-      type: 'text',
-      rows: 3
-    },
-  ]
+{
+  "name": "gm-crypto",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "14.2.3",
+    "react": "^18",
+    "react-dom": "^18",
+    "next-sanity": "^9.0.0",
+    "@sanity/image-url": "^1.0.2",
+    "@portabletext/react": "^3.0.0",
+    "sanity": "^3.0.0",
+    "@sanity/vision": "^3.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3"
+  }
 }
