@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react'
 
 const COIN_IDS = [
-  'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
-  'ripple', 'usd-coin', 'staked-ether', 'cardano', 'avalanche-2'
+  'bitcoin', 'ethereum', 'hyperliquid', 'binancecoin', 'solana',
+  'ripple', 'dogecoin', 'pax-gold', 'cardano', 'avalanche-2'
 ]
 
 const SYMBOLS = {
-  bitcoin: 'BTC', ethereum: 'ETH', tether: 'USDT', binancecoin: 'BNB',
-  solana: 'SOL', ripple: 'XRP', 'usd-coin': 'USDC', 'staked-ether': 'stETH',
-  cardano: 'ADA', 'avalanche-2': 'AVAX'
+  bitcoin: 'BTC',
+  ethereum: 'ETH',
+  hyperliquid: 'HYPE',
+  binancecoin: 'BNB',
+  solana: 'SOL',
+  ripple: 'XRP',
+  dogecoin: 'DOGE',
+  'pax-gold': 'GOLD',
+  cardano: 'ADA',
+  'avalanche-2': 'AVAX'
 }
 
 function formatPrice(price) {
