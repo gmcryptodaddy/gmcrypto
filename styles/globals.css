@@ -16,6 +16,41 @@
   --font-mono: 'Space Mono', monospace;
 }
 
+/* Light mode */
+body.light {
+  --bg: #f5f2eb;
+  --bg2: #eceae2;
+  --bg3: #e2dfd6;
+  --border: #d0cdc4;
+  --accent: #d4a017;
+  --accent2: #e05a20;
+  --text: #1a1a1a;
+  --text2: #555550;
+  --text3: #999990;
+  --green: #1a8a50;
+  --red: #cc2222;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
