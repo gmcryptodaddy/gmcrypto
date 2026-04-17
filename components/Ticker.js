@@ -1,28 +1,66 @@
-const TICKERS = [
-  { symbol: 'BTC', price: '$62,450', change: '+2.4%', up: true },
-  { symbol: 'ETH', price: '$3,210', change: '+1.8%', up: true },
-  { symbol: 'SOL', price: '$148', change: '-0.9%', up: false },
-  { symbol: 'BNB', price: '$412', change: '+0.5%', up: true },
-  { symbol: 'XRP', price: '$0.58', change: '-1.2%', up: false },
-  { symbol: 'ADA', price: '$0.44', change: '+3.1%', up: true },
-  { symbol: 'AVAX', price: '$34', change: '-0.3%', up: false },
-  { symbol: 'DOT', price: '$7.20', change: '+0.8%', up: true },
-  { symbol: 'MATIC', price: '$0.88', change: '+1.5%', up: true },
-  { symbol: 'LINK', price: '$14.50', change: '-0.7%', up: false },
+import { useState, useEffect } from 'react'
+
+const COIN_IDS = [
+  'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
+  'ripple', 'usd-coin', 'staked-ether', 'cardano', 'avalanche-2'
 ]
 
+const SYMBOLS = {
+  bitcoin: 'BTC', ethereum: 'ETH', tether: 'USDT', binancecoin: 'BNB',
+  solana: 'SOL', ripple: 'XRP', 'usd-coin': 'USDC', 'staked-ether': 'stETH',
+  cardano: 'ADA', 'avalanche-2': 'AVAX'
+}
+
+function formatPrice(price) {
+  if (price >= 1000) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (price >= 1) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  return '$' + price.toFixed(4)
+}
+
 export default function Ticker() {
-  const items = [...TICKERS, ...TICKERS] // duplicate for seamless loop
+  const [coins, setCoins] = useState([])
+
+  useEffect(() => {
+    async function fetchPrices() {
+      try {
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COIN_IDS.join(',')}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`
+        )
+        const data = await res.json()
+        setCoins(data)
+      } catch (err) {
+        console.error('Ticker fetch error:', err)
+      }
+    }
+    fetchPrices()
+    const interval = setInterval(fetchPrices, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const items = coins.length > 0 ? [...coins, ...coins] : []
+
+  if (coins.length === 0) return (
+    <div className="ticker-wrap" style={{ textAlign: 'center', letterSpacing: '0.1em' }}>
+      LOADING LIVE PRICES...
+    </div>
+  )
+
   return (
     <div className="ticker-wrap">
       <div className="ticker-track">
-        {items.map((t, i) => (
-          <span key={i} className="ticker-item">
-            <strong>{t.symbol}</strong>{' '}
-            {t.price}{' '}
-            <span className={t.up ? 'ticker-up' : 'ticker-down'}>{t.change}</span>
-          </span>
-        ))}
+        {items.map((coin, i) => {
+          const change = coin.price_change_percentage_24h
+          const up = change >= 0
+          return (
+            <span key={i} className="ticker-item">
+              <strong>{SYMBOLS[coin.id] || coin.symbol?.toUpperCase()}</strong>{' '}
+              {formatPrice(coin.current_price)}{' '}
+              <span className={up ? 'ticker-up' : 'ticker-down'}>
+                {up ? '+' : ''}{change?.toFixed(2)}%
+              </span>
+            </span>
+          )
+        })}
       </div>
     </div>
   )
