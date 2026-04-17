@@ -10,14 +10,9 @@ import { allPostsQuery, featuredPostsQuery } from '../lib/queries'
 function timeAgo(dateStr) {
   if (!dateStr) return ''
   const diff = (Date.now() - new Date(dateStr)) / 1000
-  if (diff < 3600) return Math.floor(diff / 60) + ' minutes ago'
-  if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago'
-  return Math.floor(diff / 86400) + ' days ago'
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago'
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago'
+  return Math.floor(diff / 86400) + 'd ago'
 }
 
 const FILTERS = ['All', 'Markets', 'Bitcoin', 'Ethereum', 'DeFi', 'NFTs', 'Regulation', 'Learn', 'Opinion']
@@ -30,11 +25,11 @@ export default function Home({ featured, posts }) {
   return (
     <>
       <Head>
-        <title>GM Crypto — Daily Crypto News & Market Insights</title>
+        <title>[ gm crypto ] — Daily Crypto News & Market Insights</title>
         <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-        <meta property="og:title" content="GM Crypto" />
+        <link rel="icon" type="image/png" href="/logo.png" />
+        <meta property="og:title" content="[ gm crypto ]" />
         <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights." />
         <meta property="og:type" content="website" />
       </Head>
@@ -42,14 +37,12 @@ export default function Home({ featured, posts }) {
       <Ticker />
       <Navbar />
 
-      {/* ── Main 3-column layout ── */}
       <div className="home-layout">
-
         {/* LEFT — Latest News Feed */}
         <aside className="latest-feed">
           <div className="feed-header">
             <span className="feed-dot" />
-            <span className="feed-title">Latest news</span>
+            <span className="feed-title">Latest</span>
           </div>
           <div className="feed-list">
             {latestPosts.length > 0 ? latestPosts.map(post => (
@@ -68,10 +61,8 @@ export default function Home({ featured, posts }) {
           </div>
         </aside>
 
-        {/* CENTER — Featured Article + Filter + Grid */}
+        {/* CENTER */}
         <main className="center-col">
-
-          {/* Category filter pills */}
           <div className="filter-bar">
             {FILTERS.map((f, i) => (
               <Link key={f} href={f === 'All' ? '/' : `/category/${f.toLowerCase()}`}>
@@ -80,7 +71,6 @@ export default function Home({ featured, posts }) {
             ))}
           </div>
 
-          {/* Hero featured article */}
           {hero ? (
             <Link href={`/post/${hero.slug.current}`} className="center-hero">
               {hero.mainImage ? (
@@ -90,13 +80,11 @@ export default function Home({ featured, posts }) {
                   className="center-hero-img"
                 />
               ) : (
-                <div className="center-hero-img img-placeholder">NO IMAGE</div>
+                <div className="center-hero-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
               )}
               <div className="center-hero-body">
                 <div className="center-hero-meta">
-                  {hero.author?.name && (
-                    <span className="center-hero-author">{hero.author.name}</span>
-                  )}
+                  {hero.author?.name && <span className="center-hero-author">{hero.author.name}</span>}
                   {hero.category && <span className="feed-category">{hero.category}</span>}
                 </div>
                 <h1 className="center-hero-title">{hero.title}</h1>
@@ -104,12 +92,13 @@ export default function Home({ featured, posts }) {
               </div>
             </Link>
           ) : (
-            <div className="center-hero" style={{ border: '1px solid var(--border)', padding: 40, textAlign: 'center' }}>
-              <p style={{ color: 'var(--text2)' }}>Publish your first article in Sanity Studio</p>
+            <div className="center-hero" style={{ border: '1px solid var(--border)', padding: 48, textAlign: 'center' }}>
+              <p style={{ color: 'var(--text3)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em' }}>
+                [ publish your first article in sanity studio ]
+              </p>
             </div>
           )}
 
-          {/* Secondary posts grid */}
           {gridPosts.length > 0 && (
             <div className="secondary-grid">
               {gridPosts.map(post => (
@@ -132,7 +121,7 @@ export default function Home({ featured, posts }) {
           )}
         </main>
 
-        {/* RIGHT — Markets + Widgets */}
+        {/* RIGHT — Sidebar */}
         <Sidebar />
       </div>
 
