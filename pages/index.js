@@ -1,13 +1,14 @@
+import { useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Ticker from '../components/Ticker'
 import Sidebar from '../components/Sidebar'
 import { client, urlFor } from '../lib/sanity'
-import { allPostsQuery, featuredPostsQuery } from '../lib/queries'
+import { allPostsQuery } from '../lib/queries'
 
 function timeAgo(dateStr) {
-  if (!dateStr) return ''
+  if (!dateStr) return 'recently'
   const diff = (Date.now() - new Date(dateStr)) / 1000
   if (diff < 60) return 'just now'
   if (diff < 3600) {
@@ -22,11 +23,34 @@ function timeAgo(dateStr) {
   return `${d} day${d === 1 ? '' : 's'} ago`
 }
 
-const FILTERS = ['All', 'Markets', 'Bitcoin', 'Ethereum', 'DeFi', 'NFTs', 'Regulation', 'Learn', 'Opinion']
+const FILTERS = [
+  'All', 'News', 'Breaking News', 'Explainer', 'Markets',
+  'Companies', 'TradFi', 'Policy', 'DeFi', 'Tech', 'Web3', 'Security'
+]
 
 export default function Home({ posts }) {
   const allPosts = posts || []
+  const [activeFilter, setActiveFilter] = useState('All')
+  const scrollRef = useRef(null)
+
+  // Filter posts by category (case-insensitive match)
+  const filteredPosts = activeFilter === 'All'
+    ? allPosts
+    : allPosts.filter(p =>
+        p.category &&
+        p.category.toLowerCase() === activeFilter.toLowerCase()
+      )
+
+  // Latest news shows all posts, not filtered
   const latestPosts = allPosts.slice(0, 15)
+
+  const scrollFilters = (dir) => {
+    if (!scrollRef.current) return
+    scrollRef.current.scrollBy({
+      left: dir === 'left' ? -200 : 200,
+      behavior: 'smooth'
+    })
+  }
 
   return (
     <>
@@ -68,19 +92,41 @@ export default function Home({ posts }) {
           </div>
         </aside>
 
-        {/* CENTER — Filter + All articles list */}
+        {/* CENTER — Filter + Articles list */}
         <main className="center-col">
           <div className="filter-bar">
-            {FILTERS.map((f, i) => (
-              <Link key={f} href={f === 'All' ? '/' : `/category/${f.toLowerCase()}`}>
-                <span className={`filter-pill ${i === 0 ? 'filter-pill-active' : ''}`}>{f}</span>
-              </Link>
-            ))}
+            <button
+              className="filter-arrow"
+              onClick={() => scrollFilters('left')}
+              aria-label="Scroll filters left"
+            >
+              ‹
+            </button>
+            <div className="filter-scroll-wrap" ref={scrollRef}>
+              <div className="filter-scroll-inner">
+                {FILTERS.map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setActiveFilter(f)}
+                    className={`filter-pill ${activeFilter === f ? 'filter-pill-active' : ''}`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              className="filter-arrow"
+              onClick={() => scrollFilters('right')}
+              aria-label="Scroll filters right"
+            >
+              ›
+            </button>
           </div>
 
-          {allPosts.length > 0 ? (
+          {filteredPosts.length > 0 ? (
             <div className="article-list">
-              {allPosts.map(post => (
+              {filteredPosts.map(post => (
                 <article key={post._id} className="article-item">
                   <Link href={`/post/${post.slug.current}`}>
                     {post.mainImage ? (
@@ -130,10 +176,8 @@ export default function Home({ posts }) {
               ))}
             </div>
           ) : (
-            <div style={{ border: '1px solid var(--border)', padding: 48, textAlign: 'center', borderRadius: 14 }}>
-              <p style={{ color: 'var(--text3)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em' }}>
-                [ publish your first article in sanity studio ]
-              </p>
+            <div className="filter-empty">
+              No articles in "{activeFilter}" yet.
             </div>
           )}
         </main>
