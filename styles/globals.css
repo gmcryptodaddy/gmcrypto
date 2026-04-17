@@ -127,7 +127,7 @@ body.light .ticker-down { color: #f44336; }
   z-index: 100;
 }
 .nav-inner {
-  max-width: 1500px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
@@ -151,11 +151,11 @@ body.light .ticker-down { color: #f44336; }
 
 /* Home 3-col */
 .home-layout {
-  max-width: 1500px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 20px;
   display: grid;
-  grid-template-columns: 240px 1fr 340px;
+  grid-template-columns: 240px 1fr 380px;
   gap: 0;
   height: calc(100vh - 68px - 33px);
   overflow: hidden;
@@ -582,7 +582,7 @@ body:has(.main-grid) { overflow: auto; }
 
 /* Responsive */
 @media (max-width: 1100px) {
-  .home-layout { grid-template-columns: 220px 1fr 280px; }
+  .home-layout { grid-template-columns: 220px 1fr 300px; }
 }
 @media (max-width: 768px) {
   body { overflow: auto; }
