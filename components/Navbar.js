@@ -30,7 +30,10 @@ export default function Navbar() {
     <nav className="nav">
       <div className="nav-inner">
         <Link href="/" className="nav-logo">
-          GM <span>Crypto</span>
+          <img
+            src={isDark ? '/logo.png' : '/logo-full.png'}
+            alt="[ gm crypto ]"
+          />
         </Link>
         <div className="nav-links">
           {CATEGORIES.map(cat => (
@@ -38,10 +41,8 @@ export default function Navbar() {
           ))}
         </div>
         <button className="theme-toggle" onClick={toggleTheme} title="Toggle light/dark mode">
-          <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
-          <span className="toggle-track">
-            <span className="toggle-thumb" />
-          </span>
+          <span className="toggle-label">{isDark ? '[ gn ]' : '[ gm ]'}</span>
+          <span className="toggle-track"><span className="toggle-thumb" /></span>
         </button>
       </div>
     </nav>
