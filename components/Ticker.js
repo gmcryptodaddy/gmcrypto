@@ -58,9 +58,11 @@ export default function Ticker() {
         {items.map((coin, i) => {
           const change = coin.price_change_percentage_24h
           const up = change >= 0
+          const symbol = SYMBOLS[coin.id] || coin.symbol?.toUpperCase()
+          const isBTC = coin.id === 'bitcoin'
           return (
             <span key={i} className="ticker-item">
-              <strong>{SYMBOLS[coin.id] || coin.symbol?.toUpperCase()}</strong>{' '}
+              <strong className={isBTC ? 'ticker-btc' : ''}>{symbol}</strong>{' '}
               {formatPrice(coin.current_price)}{' '}
               <span className={up ? 'ticker-up' : 'ticker-down'}>
                 {up ? '+' : ''}{change?.toFixed(2)}%
