@@ -19,14 +19,14 @@ export default function CategoryPage({ posts, category }) {
   return (
     <>
       <Head>
-        <title>{label} News — GM Crypto</title>
+        <title>{label} — [ gm crypto ]</title>
         <meta name="description" content={`Latest ${label} news and analysis on GM Crypto.`} />
       </Head>
       <Ticker />
       <Navbar />
       <div className="main-grid" style={{ paddingTop: 40 }}>
         <main>
-          <div className="section-label"><span>▸</span>{label}</div>
+          <div className="section-label"><span>[ </span>{label}</div>
           <div className="posts-grid">
             {posts.length > 0 ? posts.map(post => (
               <Link key={post._id} href={`/post/${post.slug.current}`} className={`post-card ${!post.mainImage ? 'post-card-no-img' : ''}`}>
