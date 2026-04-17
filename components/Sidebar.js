@@ -1,19 +1,46 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
-const MARKETS = [
-  { name: 'Bitcoin', symbol: 'BTC', price: '$62,450', change: '+2.4%', up: true },
-  { name: 'Ethereum', symbol: 'ETH', price: '$3,210', change: '+1.8%', up: true },
-  { name: 'Solana', symbol: 'SOL', price: '$148', change: '-0.9%', up: false },
-  { name: 'BNB', symbol: 'BNB', price: '$412', change: '+0.5%', up: true },
-  { name: 'XRP', symbol: 'XRP', price: '$0.58', change: '-1.2%', up: false },
+const COIN_IDS = [
+  'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
+  'cardano', 'avalanche-2', 'dogecoin', 'tron', 'chainlink'
 ]
 
 const CATEGORIES = ['Markets', 'DeFi', 'NFTs', 'Regulation', 'Bitcoin', 'Ethereum', 'Layer 2', 'Web3']
 
+function formatPrice(price) {
+  if (!price) return '$—'
+  if (price >= 1000) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (price >= 1) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  return '$' + price.toFixed(4)
+}
+
 export default function Sidebar() {
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(false)
+  const [coins, setCoins] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
+  useEffect(() => {
+    async function fetchPrices() {
+      try {
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COIN_IDS.join(',')}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`
+        )
+        const data = await res.json()
+        setCoins(data)
+        setLastUpdated(new Date())
+      } catch (err) {
+        console.error('Sidebar prices error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPrices()
+    const interval = setInterval(fetchPrices, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSubscribe = (e) => {
     e.preventDefault()
@@ -24,22 +51,54 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Markets widget */}
       <div className="widget">
-        <div className="widget-title"><span>▸</span>Markets</div>
-        {MARKETS.map(m => (
-          <div key={m.symbol} className="market-item">
-            <div>
-              <div className="market-name">{m.symbol}</div>
-              <div className="market-price">{m.name}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, color: 'var(--text)' }}>{m.price}</div>
-              <div className={`market-change ${m.up ? 'up' : 'down'}`}>{m.change}</div>
-            </div>
+        <div className="widget-title"><span>▸</span>Live Markets</div>
+
+        {loading ? (
+          <div style={{ padding: '20px 0', color: 'var(--text3)', fontSize: 12, textAlign: 'center' }}>
+            Loading live prices...
           </div>
-        ))}
-        <div style={{ marginTop: 12, fontSize: 10, color: 'var(--text3)' }}>
-          * Prices are for display purposes. Integrate CoinGecko API for live data.
-        </div>
+        ) : coins.length > 0 ? (
+          <>
+            {coins.map(coin => {
+              const change = coin.price_change_percentage_24h
+              const up = change >= 0
+              return (
+                <div key={coin.id} className="market-item">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {coin.image && (
+                      <img
+                        src={coin.image}
+                        alt={coin.name}
+                        style={{ width: 20, height: 20, borderRadius: '50%' }}
+                      />
+                    )}
+                    <div>
+                      <div className="market-name">{coin.symbol?.toUpperCase()}</div>
+                      <div className="market-price">{coin.name}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                      {formatPrice(coin.current_price)}
+                    </div>
+                    <div className={`market-change ${up ? 'up' : 'down'}`}>
+                      {up ? '+' : ''}{change?.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {lastUpdated && (
+              <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text3)' }}>
+                ↻ Updated {lastUpdated.toLocaleTimeString()} · via CoinGecko
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ padding: '12px 0', color: 'var(--text3)', fontSize: 12 }}>
+            Could not load prices. Try refreshing.
+          </div>
+        )}
       </div>
 
       {/* Newsletter */}
