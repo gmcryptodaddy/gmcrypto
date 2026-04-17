@@ -14,8 +14,7 @@
     "next-sanity": "9.12.3",
     "@sanity/image-url": "1.0.2",
     "@portabletext/react": "3.1.0",
-    "sanity": "3.88.0",
-    "@sanity/vision": "3.88.0"
+    "sanity": "3.88.0"
   },
   "devDependencies": {
     "eslint": "^8",
