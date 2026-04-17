@@ -7,8 +7,7 @@ export default function Footer() {
         <div>
           <div className="footer-logo">GM <span>Crypto</span></div>
           <p className="footer-desc">
-            Your daily dose of crypto news, market analysis, and blockchain insights.
-            No hype. Just signal.
+            GM!Your daily dose of crypto news, market analysis, and blockchain insights.
           </p>
         </div>
         <div className="footer-col">
