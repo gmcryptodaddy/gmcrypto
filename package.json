@@ -8,17 +8,17 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "14.2.3",
-    "react": "^18",
-    "react-dom": "^18",
-    "next-sanity": "^9.0.0",
+    "next": "15.3.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "next-sanity": "^9.8.0",
     "@sanity/image-url": "^1.0.2",
     "@portabletext/react": "^3.0.0",
-    "sanity": "^3.0.0",
-    "@sanity/vision": "^3.0.0"
+    "sanity": "^3.88.0",
+    "@sanity/vision": "^3.88.0"
   },
   "devDependencies": {
     "eslint": "^8",
-    "eslint-config-next": "14.2.3"
+    "eslint-config-next": "15.3.0"
   }
 }
