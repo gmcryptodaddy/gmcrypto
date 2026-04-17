@@ -46,7 +46,7 @@ export default function PostPage({ post }) {
       <Navbar />
       <div style={{ padding: '80px 24px', textAlign: 'center', color: 'var(--text2)' }}>
         <h2>Article not found</h2>
-        <Link href="/" style={{ color: 'var(--accent)', marginTop: 16, display: 'block' }}>← Back to home</Link>
+        <Link href="/" style={{ color: 'var(--text)', marginTop: 16, display: 'block', textDecoration: 'underline', textUnderlineOffset: '3px' }}>← Back to home</Link>
       </div>
       <Footer />
     </>
@@ -55,7 +55,7 @@ export default function PostPage({ post }) {
   return (
     <>
       <Head>
-        <title>{post.title} — GM Crypto</title>
+        <title>{post.title} — [ gm crypto ]</title>
         <meta name="description" content={post.excerpt || post.title} />
         <meta property="og:title" content={post.title} />
         <meta property="og:description" content={post.excerpt || ''} />
@@ -94,7 +94,7 @@ export default function PostPage({ post }) {
               )}
               <div>
                 {post.author?.name && (
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>{post.author.name}</div>
+                  <div style={{ fontFamily: "var(--font-serif)", fontSize: 14 }}>{post.author.name}</div>
                 )}
                 <div className="post-meta">{formatDate(post.publishedAt)}</div>
               </div>
