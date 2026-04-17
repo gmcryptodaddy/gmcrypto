@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Ticker from '../components/Ticker'
 import Sidebar from '../components/Sidebar'
+import Footer from '../components/Footer'
 import { client, urlFor } from '../lib/sanity'
 import { allPostsQuery } from '../lib/queries'
 
@@ -33,7 +34,6 @@ export default function Home({ posts }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const scrollRef = useRef(null)
 
-  // Filter posts by category (case-insensitive match)
   const filteredPosts = activeFilter === 'All'
     ? allPosts
     : allPosts.filter(p =>
@@ -41,7 +41,6 @@ export default function Home({ posts }) {
         p.category.toLowerCase() === activeFilter.toLowerCase()
       )
 
-  // Latest news shows all posts, not filtered
   const latestPosts = allPosts.slice(0, 15)
 
   const scrollFilters = (dir) => {
@@ -67,7 +66,6 @@ export default function Home({ posts }) {
       <Navbar />
 
       <div className="home-layout">
-        {/* LEFT — Latest News Feed */}
         <aside className="latest-feed">
           <div className="feed-header">
             <span className="feed-dot" />
@@ -92,7 +90,6 @@ export default function Home({ posts }) {
           </div>
         </aside>
 
-        {/* CENTER — Filter + Articles list */}
         <main className="center-col">
           <div className="filter-bar">
             <button
@@ -174,15 +171,20 @@ export default function Home({ posts }) {
                   </div>
                 </article>
               ))}
+
+              {/* Footer inside the scrollable center column */}
+              <Footer />
             </div>
           ) : (
-            <div className="filter-empty">
-              No articles in "{activeFilter}" yet.
-            </div>
+            <>
+              <div className="filter-empty">
+                No articles in "{activeFilter}" yet.
+              </div>
+              <Footer />
+            </>
           )}
         </main>
 
-        {/* RIGHT — Sidebar */}
         <Sidebar />
       </div>
     </>
