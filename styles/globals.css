@@ -108,6 +108,7 @@ img { max-width: 100%; display: block; }
 .ticker-track { display: inline-block; animation: ticker 40s linear infinite; }
 .ticker-track:hover { animation-play-state: paused; }
 .ticker-item { display: inline-block; margin: 0 40px; }
+.ticker-btc { color: #FF6B00; }
 .ticker-up { color: #1a5c1a; }
 .ticker-down { color: #8b0000; }
 body.light .ticker-wrap { background: #000; color: #fff; }
