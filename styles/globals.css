@@ -227,7 +227,7 @@ body.light .ticker-down { color: #f44336; }
 .feed-time {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text3);
+  color: var(--accent);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -382,7 +382,7 @@ body.light .ticker-down { color: #f44336; }
 .article-item-time {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text3);
+  color: var(--accent);
 }
 
 /* Labels & tags */
