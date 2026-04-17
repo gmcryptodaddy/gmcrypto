@@ -41,11 +41,12 @@ export default function Navbar() {
           ))}
         </div>
 
-        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-          <span className={`toggle-option ${isDark ? 'toggle-active' : ''}`}>GN</span>
-          <span className="toggle-divider">·</span>
-          <span className={`toggle-option ${!isDark ? 'toggle-active' : ''}`}>GM</span>
-        </button>
+<button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+  <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
+  <span className="toggle-track">
+    <span className="toggle-thumb" style={{ transform: isDark ? 'translateX(0)' : 'translateX(16px)' }} />
+  </span>
+</button>
       </div>
     </nav>
   )
