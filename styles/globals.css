@@ -34,21 +34,54 @@ body.light {
 /* Theme toggle button */
 .theme-toggle {
   background: none;
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  padding: 5px 10px;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  padding: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 12px;
+  gap: 8px;
+  margin-left: 16px;
 }
-.theme-toggle:hover {
-  border-color: var(--accent);
+.toggle-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text2);
+  transition: color 0.2s;
+}
+.theme-toggle:hover .toggle-label {
   color: var(--accent);
+}
+.toggle-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 20px;
+  position: relative;
+  transition: background 0.25s;
+}
+.theme-toggle:hover .toggle-track {
+  background: var(--accent);
+}
+.toggle-thumb {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: var(--text);
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.25s, background 0.25s;
+}
+body.light .toggle-track {
+  background: var(--accent);
+}
+body.light .toggle-thumb {
+  transform: translateX(16px);
+  background: #fff;
 }
 
 * {
