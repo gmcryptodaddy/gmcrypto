@@ -7,7 +7,6 @@ export default function Navbar() {
   const [isDark, setIsDark] = useState(true)
 
   useEffect(() => {
-    // Load saved preference
     const saved = localStorage.getItem('theme')
     if (saved === 'light') {
       setIsDark(false)
@@ -38,11 +37,12 @@ export default function Navbar() {
             <Link key={cat} href={`/category/${cat.toLowerCase()}`}>{cat}</Link>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button className="theme-toggle" onClick={toggleTheme} title="Toggle light/dark mode">
-            {isDark ? '☀️' : '🌙'}
-          </button>
-        </div>
+        <button className="theme-toggle" onClick={toggleTheme} title="Toggle light/dark mode">
+          <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
+          <span className="toggle-track">
+            <span className="toggle-thumb" />
+          </span>
+        </button>
       </div>
     </nav>
   )
