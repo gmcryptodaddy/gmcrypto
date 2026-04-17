@@ -2,38 +2,53 @@ import Link from 'next/link'
 
 export default function Footer() {
   return (
-    <>
-      <footer className="footer">
-        <div>
-          <div className="footer-logo">
-            <img src="/logo-full.png" alt="[ gm crypto ]" />
-          </div>
-          <p className="footer-desc">
+    <footer className="site-footer">
+      <div className="footer-main">
+        <div className="footer-logo-col">
+          <img src="/logo-full.png" alt="[ gm crypto ]" className="footer-logo-img" />
+          <p className="footer-tagline">
             Your daily dose of crypto news, market analysis, and blockchain insights.
           </p>
         </div>
-        <div className="footer-col">
-          <h4>Coverage</h4>
-          <Link href="/category/markets">Markets</Link>
-          <Link href="/category/defi">DeFi</Link>
-          <Link href="/category/nfts">NFTs</Link>
-          <Link href="/category/regulation">Regulation</Link>
-          <Link href="/category/bitcoin">Bitcoin</Link>
-          <Link href="/category/ethereum">Ethereum</Link>
-        </div>
+
         <div className="footer-col">
           <h4>Company</h4>
-          <Link href="/about">About</Link>
-          <Link href="/contact">Contact</Link>
           <Link href="/advertise">Advertise</Link>
-          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/contact">Contact Us</Link>
+          <Link href="/about">About Us</Link>
+          <Link href="/careers">Careers</Link>
+        </div>
+
+        <div className="footer-col">
+          <h4>Products</h4>
+          <Link href="/category/news">News</Link>
+          <Link href="/category/learn">Learn</Link>
+          <Link href="/category/markets">Markets</Link>
+          <Link href="/category/analysis">Analysis</Link>
+        </div>
+
+        <div className="footer-col">
+          <h4>Crypto News</h4>
+          <Link href="/category/xrp">XRP News</Link>
+          <Link href="/category/bitcoin">Bitcoin News</Link>
+          <Link href="/category/markets">Crypto Market Analysis</Link>
+          <Link href="/category/ethereum">Ethereum News</Link>
+          <Link href="/category/policy">US Crypto News</Link>
+          <Link href="/category/dogecoin">Dogecoin News</Link>
+          <Link href="/category/solana">Solana News</Link>
+          <Link href="/category/meme-coins">Meme Coin News</Link>
+          <Link href="/category/etf">ETF News</Link>
+        </div>
+      </div>
+
+      <div className="footer-bottom-row">
+        <span>© {new Date().getFullYear()} [ gm crypto ] — Not financial advice.</span>
+        <div className="footer-legal">
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy">Privacy</Link>
           <Link href="/disclaimer">Disclaimer</Link>
         </div>
-      </footer>
-      <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} [ gm crypto ] — Not financial advice.</span>
-        <span>Built with Next.js + Sanity</span>
       </div>
-    </>
+    </footer>
   )
 }
