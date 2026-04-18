@@ -37,7 +37,6 @@ export default function Home({ posts }) {
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
   const scrollRef = useRef(null)
 
-  // Reset visible count when filter changes
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
   }, [activeFilter])
@@ -203,7 +202,11 @@ export default function Home({ posts }) {
           ) : (
             <>
               <div className="filter-empty">
-                No articles in "{activeFilter}" yet.
+                <div className="filter-empty-emoji">🐸</div>
+                <div className="filter-empty-text">Let us cook</div>
+                <div className="filter-empty-sub">
+                  No articles in "{activeFilter}" yet — check back soon.
+                </div>
               </div>
               <Footer />
             </>
