@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
@@ -29,10 +29,18 @@ const FILTERS = [
   'Companies', 'TradFi', 'Policy', 'DeFi', 'Tech', 'Web3', 'Security'
 ]
 
+const POSTS_PER_PAGE = 10
+
 export default function Home({ posts }) {
   const allPosts = posts || []
   const [activeFilter, setActiveFilter] = useState('All')
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
   const scrollRef = useRef(null)
+
+  // Reset visible count when filter changes
+  useEffect(() => {
+    setVisibleCount(POSTS_PER_PAGE)
+  }, [activeFilter])
 
   const filteredPosts = activeFilter === 'All'
     ? allPosts
@@ -40,6 +48,9 @@ export default function Home({ posts }) {
         p.category &&
         p.category.toLowerCase() === activeFilter.toLowerCase()
       )
+
+  const visiblePosts = filteredPosts.slice(0, visibleCount)
+  const hasMore = visibleCount < filteredPosts.length
 
   const latestPosts = allPosts.slice(0, 15)
 
@@ -49,6 +60,10 @@ export default function Home({ posts }) {
       left: dir === 'left' ? -200 : 200,
       behavior: 'smooth'
     })
+  }
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + POSTS_PER_PAGE)
   }
 
   return (
@@ -121,9 +136,9 @@ export default function Home({ posts }) {
             </button>
           </div>
 
-          {filteredPosts.length > 0 ? (
+          {visiblePosts.length > 0 ? (
             <div className="article-list">
-              {filteredPosts.map(post => (
+              {visiblePosts.map(post => (
                 <article key={post._id} className="article-item">
                   <Link href={`/post/${post.slug.current}`}>
                     {post.mainImage ? (
@@ -172,7 +187,17 @@ export default function Home({ posts }) {
                 </article>
               ))}
 
-              {/* Footer inside the scrollable center column */}
+              {hasMore && (
+                <div className="load-more-wrap">
+                  <button className="load-more-btn" onClick={handleLoadMore}>
+                    Load more
+                  </button>
+                  <span className="load-more-count">
+                    Showing {visiblePosts.length} of {filteredPosts.length}
+                  </span>
+                </div>
+              )}
+
               <Footer />
             </div>
           ) : (
