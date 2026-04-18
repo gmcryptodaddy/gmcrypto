@@ -16,7 +16,6 @@ export default function Footer() {
           <Link href="/advertise">Advertise</Link>
           <Link href="/contact">Contact Us</Link>
           <Link href="/about">About Us</Link>
-          <Link href="/careers">Careers</Link>
         </div>
 
         <div className="footer-col">
@@ -31,7 +30,6 @@ export default function Footer() {
           <h4>Crypto News</h4>
           <Link href="/category/xrp">XRP News</Link>
           <Link href="/category/bitcoin">Bitcoin News</Link>
-          <Link href="/category/markets">Crypto Market Analysis</Link>
           <Link href="/category/ethereum">Ethereum News</Link>
           <Link href="/category/policy">US Crypto News</Link>
           <Link href="/category/dogecoin">Dogecoin News</Link>
