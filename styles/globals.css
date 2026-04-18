@@ -265,7 +265,40 @@ body.light .ticker-down { color: #f44336; }
   font-family: var(--font-mono); font-size: 13px;
   color: var(--text3); letter-spacing: 0.04em;
 }
-
+/* Load more button */
+.load-more-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 36px 48px;
+  border-top: 1px solid var(--border);
+}
+.load-more-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 14px 48px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.load-more-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+.load-more-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+}
 /* Labels & tags */
 .section-label {
   font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.2em;
