@@ -285,10 +285,14 @@ body.light .ticker-down { color: #f44336; }
   gap: 24px;
 }
 .filter-empty-emoji {
-  font-size: 80px;
-  line-height: 1;
+  width: 100px;
+  height: 100px;
   animation: cookBob 2.5s ease-in-out infinite;
-  filter: hue-rotate(-80deg) saturate(1.6) brightness(1.1);
+}
+.filter-empty-emoji svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 @keyframes cookBob {
   0%, 100% { transform: translateY(0) rotate(-5deg); }
@@ -594,6 +598,6 @@ body.light .ticker-down { color: #f44336; }
   .posts-grid { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; padding: 32px 20px; }
   .site-footer { padding: 40px 20px 20px; }
-  .filter-empty-emoji { font-size: 64px; }
+  .filter-empty-emoji { width: 70px; height: 70px; }
   .filter-empty-text { font-size: 24px; }
 }
