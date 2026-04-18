@@ -1,7 +1,11 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 
-const CATEGORIES = ['Markets', 'DeFi', 'NFTs', 'Regulation', 'Bitcoin', 'Ethereum']
+const NAV_ITEMS = [
+  { label: 'News', href: '/category/news', hasDropdown: true },
+  { label: 'Markets', href: '/category/markets', hasDropdown: true },
+  { label: 'Learn', href: '/category/learn', hasDropdown: false },
+]
 
 export default function Navbar() {
   const [isDark, setIsDark] = useState(true)
@@ -35,11 +39,16 @@ export default function Navbar() {
             alt="[ gm crypto ]"
           />
         </Link>
+
         <div className="nav-links">
-          {CATEGORIES.map(cat => (
-            <Link key={cat} href={`/category/${cat.toLowerCase()}`}>{cat}</Link>
+          {NAV_ITEMS.map(item => (
+            <Link key={item.label} href={item.href} className="nav-link-item">
+              {item.label}
+              {item.hasDropdown && <span className="nav-caret">▾</span>}
+            </Link>
           ))}
         </div>
+
         <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
           <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
           <span className="toggle-track">
