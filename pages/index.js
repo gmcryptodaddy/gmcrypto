@@ -202,7 +202,18 @@ export default function Home({ posts }) {
           ) : (
             <>
               <div className="filter-empty">
-                <div className="filter-empty-emoji">🐸</div>
+                <div className="filter-empty-emoji">
+                  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#FF6B00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <ellipse cx="50" cy="55" rx="32" ry="28" />
+                    <circle cx="32" cy="28" r="11" />
+                    <circle cx="68" cy="28" r="11" />
+                    <circle cx="32" cy="28" r="3" fill="#FF6B00" />
+                    <circle cx="68" cy="28" r="3" fill="#FF6B00" />
+                    <path d="M 32 62 Q 50 74 68 62" />
+                    <circle cx="26" cy="58" r="1.5" fill="#FF6B00" />
+                    <circle cx="74" cy="58" r="1.5" fill="#FF6B00" />
+                  </svg>
+                </div>
                 <div className="filter-empty-text">Let us cook</div>
                 <div className="filter-empty-sub">
                   No articles in "{activeFilter}" yet — check back soon.
