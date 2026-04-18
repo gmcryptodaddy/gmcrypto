@@ -415,7 +415,13 @@ body.light .ticker-down { color: #f44336; }
   padding-bottom: 40px;
 }
 .footer-logo-col { display: flex; flex-direction: column; gap: 14px; }
-.footer-logo-img { height: 28px; width: auto; }
+.footer-logo-img {
+  height: auto;
+  width: 180px;
+  max-width: 100%;
+  object-fit: contain;
+  margin-bottom: 4px;
+}
 .footer-tagline {
   font-family: var(--font-serif);
   font-size: 14px;
