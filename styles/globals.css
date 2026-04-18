@@ -288,6 +288,7 @@ body.light .ticker-down { color: #f44336; }
   font-size: 80px;
   line-height: 1;
   animation: cookBob 2.5s ease-in-out infinite;
+  filter: hue-rotate(-80deg) saturate(1.6) brightness(1.1);
 }
 @keyframes cookBob {
   0%, 100% { transform: translateY(0) rotate(-5deg); }
