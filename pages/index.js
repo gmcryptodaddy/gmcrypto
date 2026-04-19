@@ -68,7 +68,7 @@ export default function Home({ posts }) {
   return (
     <>
       <Head>
-        <title>[ gm ] Crypto News</title>
+        <title> GM Crypto News</title>
         <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta property="og:title" content="[ gm crypto ]" />
