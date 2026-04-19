@@ -68,12 +68,24 @@ export default function Home({ posts }) {
   return (
     <>
       <Head>
-        <title> GM Crypto News</title>
+        <title>[ gm ] Crypto News</title>
         <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta property="og:title" content="[ gm crypto ]" />
-        <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights." />
+
+        {/* Open Graph — Facebook, LinkedIn, Discord, etc. */}
+        <meta property="og:title" content="[ gm ] Crypto News" />
+        <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <meta property="og:image" content="https://gmcrypto.news/og-image.png" />
+        <meta property="og:url" content="https://gmcrypto.news" />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="gm crypto" />
+
+        {/* Twitter / X */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="[ gm ] Crypto News" />
+        <meta name="twitter:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <meta name="twitter:image" content="https://gmcrypto.news/og-image.png" />
+        <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
       <Ticker />
