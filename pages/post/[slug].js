@@ -8,7 +8,7 @@ import Footer from '../../components/Footer'
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery } from '../../lib/queries'
 
-const SITE_URL = 'https://gmcrypto.news'
+const SITE_URL = 'https://www.gmcrypto.news'
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
 
 function formatDate(dateStr) {
@@ -78,6 +78,7 @@ export default function PostPage({ post }) {
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={post.title} />
         <meta property="og:url" content={postUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="gm crypto" />
@@ -96,6 +97,7 @@ export default function PostPage({ post }) {
         <meta name="twitter:title" content={post.title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:image:alt" content={post.title} />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
