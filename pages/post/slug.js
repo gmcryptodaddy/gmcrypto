@@ -8,6 +8,9 @@ import Footer from '../../components/Footer'
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery } from '../../lib/queries'
 
+const SITE_URL = 'https://gmcrypto.news'
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
+
 function formatDate(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -42,6 +45,9 @@ const ptComponents = {
 export default function PostPage({ post }) {
   if (!post) return (
     <>
+      <Head>
+        <title>Article not found — [ gm crypto ]</title>
+      </Head>
       <Ticker />
       <Navbar />
       <div style={{ padding: '80px 24px', textAlign: 'center', color: 'var(--text2)' }}>
@@ -52,16 +58,45 @@ export default function PostPage({ post }) {
     </>
   )
 
+  const ogImage = post.mainImage
+    ? urlFor(post.mainImage).width(1200).height(630).url()
+    : DEFAULT_OG_IMAGE
+
+  const postUrl = `${SITE_URL}/post/${post.slug.current}`
+  const description = post.excerpt || `Read ${post.title} on gm crypto.`
+
   return (
     <>
       <Head>
         <title>{post.title} — [ gm crypto ]</title>
-        <meta name="description" content={post.excerpt || post.title} />
+        <meta name="description" content={description} />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        {/* Open Graph — Facebook, LinkedIn, Discord, etc. */}
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={post.excerpt || ''} />
-        {post.mainImage && (
-          <meta property="og:image" content={urlFor(post.mainImage).width(1200).height(630).url()} />
+        <meta property="og:description" content={description} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:url" content={postUrl} />
+        <meta property="og:type" content="article" />
+        <meta property="og:site_name" content="gm crypto" />
+        {post.publishedAt && (
+          <meta property="article:published_time" content={post.publishedAt} />
         )}
+        {post.author?.name && (
+          <meta property="article:author" content={post.author.name} />
+        )}
+        {post.category && (
+          <meta property="article:section" content={post.category} />
+        )}
+
+        {/* Twitter / X */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={post.title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
       <Ticker />
