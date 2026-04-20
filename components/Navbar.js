@@ -44,7 +44,7 @@ export default function Navbar() {
           {NAV_ITEMS.map(item => (
             <Link key={item.label} href={item.href} className="nav-link-item">
               {item.label}
-              {item.hasDropdown && <span className="nav-caret">▾</span>}
+              {item.hasDropdown && <span className="nav-caret">⌄</span>}
             </Link>
           ))}
         </div>
