@@ -97,17 +97,17 @@ export default function Home({ posts }) {
         <meta property="og:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="gm crypto — Daily crypto news" />
+        <meta property="og:image:alt" content="GM Crypto News" />
         <meta property="og:url" content="https://www.gmcrypto.news" />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="gm crypto" />
+        <meta property="og:site_name" content="GM Crypto News" />
 
         {/* Twitter / X */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="GM Crypto News" />
         <meta name="twitter:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="twitter:image" content="https://www.gmcrypto.news/og-image.png" />
-        <meta name="twitter:image:alt" content="gm crypto — Daily crypto news" />
+        <meta name="twitter:image:alt" content="GM Crypto News" />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
@@ -147,7 +147,9 @@ export default function Home({ posts }) {
               aria-label="Scroll filters left"
               data-hidden={!canScrollLeft}
             >
-              ‹
+              <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
             <div className="filter-scroll-wrap" ref={scrollRef}>
               <div className="filter-scroll-inner">
@@ -168,7 +170,9 @@ export default function Home({ posts }) {
               aria-label="Scroll filters right"
               data-hidden={!canScrollRight}
             >
-              ›
+              <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
           </div>
 
