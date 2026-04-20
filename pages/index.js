@@ -37,9 +37,28 @@ export default function Home({ posts }) {
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
   const scrollRef = useRef(null)
 
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(true)
+
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
   }, [activeFilter])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const handleScroll = () => {
+      setCanScrollLeft(el.scrollLeft > 5)
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5)
+    }
+    handleScroll()
+    el.addEventListener('scroll', handleScroll)
+    window.addEventListener('resize', handleScroll)
+    return () => {
+      el.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleScroll)
+    }
+  }, [])
 
   const filteredPosts = activeFilter === 'All'
     ? allPosts
@@ -68,11 +87,11 @@ export default function Home({ posts }) {
   return (
     <>
       <Head>
-        <title>GM Crypto News</title>
+        <title>[ gm ] Crypto News</title>
         <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        {/* Open Graph — Facebook, LinkedIn, Discord, etc. */}
+        {/* Open Graph */}
         <meta property="og:title" content="[ gm ] Crypto News" />
         <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta property="og:image" content="https://www.gmcrypto.news/og-image.png" />
@@ -126,6 +145,7 @@ export default function Home({ posts }) {
               className="filter-arrow"
               onClick={() => scrollFilters('left')}
               aria-label="Scroll filters left"
+              data-hidden={!canScrollLeft}
             >
               ‹
             </button>
@@ -146,6 +166,7 @@ export default function Home({ posts }) {
               className="filter-arrow"
               onClick={() => scrollFilters('right')}
               aria-label="Scroll filters right"
+              data-hidden={!canScrollRight}
             >
               ›
             </button>
