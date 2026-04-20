@@ -92,7 +92,7 @@ export default function Home({ posts }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         {/* Open Graph */}
-        <meta property="og:title" content="[ gm ] Crypto News" />
+        <meta property="og:title" content="GM Crypto News" />
         <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta property="og:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta property="og:image:width" content="1200" />
@@ -104,7 +104,7 @@ export default function Home({ posts }) {
 
         {/* Twitter / X */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="[ gm ] Crypto News" />
+        <meta name="twitter:title" content="GM Crypto News" />
         <meta name="twitter:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
         <meta name="twitter:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta name="twitter:image:alt" content="gm crypto — Daily crypto news" />
