@@ -120,15 +120,15 @@ body.light .ticker-down { color: #f44336; }
   transition: color 0.2s;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 .nav-link-item:hover { color: var(--accent); }
 .nav-caret {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text3);
-  line-height: 1;
-  transform: translateY(1px);
+  width: 12px;
+  height: 8px;
+  color: var(--text2);
+  flex-shrink: 0;
+  transition: color 0.2s;
 }
 .nav-link-item:hover .nav-caret { color: var(--accent); }
 .nav-tag { display: none; }
@@ -220,11 +220,11 @@ body.light .ticker-down { color: #f44336; }
 .filter-pill:hover { color: var(--text); border-color: var(--text2); }
 .filter-pill-active { color: var(--text); border-color: var(--text); border-width: 1.5px; }
 
-/* Filter arrows — bigger + hideable */
+/* Filter arrows — SVG-based, bigger + hideable */
 .filter-arrow {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1px solid var(--border2);
   background: transparent;
@@ -233,12 +233,12 @@ body.light .ticker-down { color: #f44336; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: 400;
-  line-height: 1;
   transition: all 0.2s;
-  font-family: var(--font-mono);
   padding: 0;
+}
+.filter-arrow svg {
+  width: 18px;
+  height: 18px;
 }
 .filter-arrow:hover { color: var(--text); border-color: var(--text); }
 .filter-arrow:disabled,
