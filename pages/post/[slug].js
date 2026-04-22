@@ -5,8 +5,10 @@ import Navbar from '../../components/Navbar'
 import Ticker from '../../components/Ticker'
 import Sidebar from '../../components/Sidebar'
 import Footer from '../../components/Footer'
+import ShareButton from '../../components/ShareButton'
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery } from '../../lib/queries'
+import { generateHashtags } from '../../lib/hashtags'
 
 const SITE_URL = 'https://www.gmcrypto.news'
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
@@ -46,7 +48,7 @@ export default function PostPage({ post }) {
   if (!post) return (
     <>
       <Head>
-        <title>Article not found — [ gm crypto ]</title>
+        <title>Article not found — GM Crypto News</title>
       </Head>
       <Ticker />
       <Navbar />
@@ -64,24 +66,23 @@ export default function PostPage({ post }) {
 
   const postUrl = `${SITE_URL}/post/${post.slug.current}`
   const description = post.excerpt || `Read ${post.title} on gm crypto.`
+  const hashtags = generateHashtags(post.title, post.category, 4)
 
   return (
     <>
       <Head>
-        <title>{post.title} — [ gm crypto ]</title>
+        <title>{post.title} — GM Crypto News</title>
         <meta name="description" content={description} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        {/* Open Graph — Facebook, LinkedIn, Discord, etc. */}
         <meta property="og:title" content={post.title} />
         <meta property="og:description" content={description} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={post.title} />
         <meta property="og:url" content={postUrl} />
         <meta property="og:type" content="article" />
-        <meta property="og:site_name" content="gm crypto" />
+        <meta property="og:site_name" content="GM Crypto News" />
         {post.publishedAt && (
           <meta property="article:published_time" content={post.publishedAt} />
         )}
@@ -92,12 +93,10 @@ export default function PostPage({ post }) {
           <meta property="article:section" content={post.category} />
         )}
 
-        {/* Twitter / X */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
-        <meta name="twitter:image:alt" content={post.title} />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
@@ -107,20 +106,33 @@ export default function PostPage({ post }) {
       <div className="article-wrap">
         <article className="article-main">
           <div className="article-header">
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <Link href="/" style={{ fontSize: 12, color: 'var(--text3)' }}>Home</Link>
-              <span style={{ color: 'var(--text3)' }}>/</span>
-              {post.category && (
-                <>
-                  <Link href={`/category/${post.category.toLowerCase()}`} style={{ fontSize: 12, color: 'var(--text3)' }}>{post.category}</Link>
-                  <span style={{ color: 'var(--text3)' }}>/</span>
-                </>
-              )}
-              <span style={{ fontSize: 12, color: 'var(--text2)' }}>Article</span>
+            <div className="article-top-bar">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Link href="/" style={{ fontSize: 12, color: 'var(--text3)' }}>Home</Link>
+                <span style={{ color: 'var(--text3)' }}>/</span>
+                {post.category && (
+                  <>
+                    <Link href={`/category/${post.category.toLowerCase()}`} style={{ fontSize: 12, color: 'var(--text3)' }}>{post.category}</Link>
+                    <span style={{ color: 'var(--text3)' }}>/</span>
+                  </>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--text2)' }}>Article</span>
+              </div>
+              <ShareButton url={postUrl} title={post.title} />
             </div>
+
             {post.category && <span className="category-tag">{post.category}</span>}
             <h1>{post.title}</h1>
             {post.excerpt && <p className="excerpt">{post.excerpt}</p>}
+
+            {hashtags.length > 0 && (
+              <div className="article-page-hashtags">
+                {hashtags.map(tag => (
+                  <span key={tag} className="article-hashtag">{tag}</span>
+                ))}
+              </div>
+            )}
+
             <div className="article-meta">
               {post.author?.image && (
                 <img
