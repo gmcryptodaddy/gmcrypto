@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 const COIN_IDS = [
   'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
@@ -48,7 +49,9 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Markets widget */}
       <div className="widget">
-        <div className="widget-title">Live Markets</div>
+        <Link href="/markets" className="widget-title widget-title-link">
+          Live Markets
+        </Link>
 
         {loading ? (
           <div style={{ padding: '20px 0', color: 'var(--text3)', fontSize: 12, textAlign: 'center' }}>
@@ -60,7 +63,7 @@ export default function Sidebar() {
               const change = coin.price_change_percentage_24h
               const up = change >= 0
               return (
-                <div key={coin.id} className="market-item">
+                <Link key={coin.id} href={`/markets/${coin.id}`} className="market-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {coin.image && (
                       <img
@@ -82,7 +85,7 @@ export default function Sidebar() {
                       {up ? '+' : ''}{change?.toFixed(2)}%
                     </div>
                   </div>
-                </div>
+                </Link>
               )
             })}
             {lastUpdated && (
