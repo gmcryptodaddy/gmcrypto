@@ -4,12 +4,9 @@ import { client, urlFor } from '../lib/sanity'
 
 const NEWS_CATEGORIES = [
   { label: 'Breaking News', href: '/category/breaking-news' },
-  { label: 'Explainer', href: '/category/explainer' },
   { label: 'Policy', href: '/category/policy' },
-  { label: 'Companies', href: '/category/companies' },
-  { label: 'DeFi', href: '/category/defi' },
   { label: 'Tech', href: '/category/tech' },
-  { label: 'Security', href: '/category/security' },
+  { label: 'DeFi', href: '/category/defi' },
   { label: 'TradFi', href: '/category/tradfi' },
 ]
 
@@ -30,7 +27,6 @@ export default function Navbar() {
     }
   }, [])
 
-  // Fetch recent posts for News dropdown (once)
   useEffect(() => {
     async function loadPosts() {
       try {
@@ -46,7 +42,6 @@ export default function Navbar() {
     loadPosts()
   }, [])
 
-  // Fetch trending coins for Markets dropdown (once)
   useEffect(() => {
     async function loadTrending() {
       try {
@@ -62,7 +57,6 @@ export default function Navbar() {
     loadTrending()
   }, [])
 
-  // Quick search (debounced) for Markets dropdown
   useEffect(() => {
     if (!searchValue || searchValue.length < 2) {
       setSearchResults([])
@@ -117,7 +111,6 @@ export default function Navbar() {
         </Link>
 
         <div className="nav-links">
-          {/* News */}
           <div
             className="nav-item-wrap"
             onMouseEnter={() => handleEnter('news')}
@@ -131,7 +124,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Markets */}
           <div
             className="nav-item-wrap"
             onMouseEnter={() => handleEnter('markets')}
@@ -145,7 +137,9 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <Link href="/category/learn" className="nav-link-item">Learn</Link>
+          <div className="nav-item-wrap">
+            <Link href="/category/learn" className="nav-link-item">Learn</Link>
+          </div>
         </div>
 
         <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
@@ -155,8 +149,6 @@ export default function Navbar() {
           </span>
         </button>
       </div>
-
-      {/* MEGA DROPDOWNS — positioned absolutely below nav, no layout shift */}
 
       {/* News dropdown */}
       <div
@@ -230,7 +222,7 @@ export default function Navbar() {
             </Link>
 
             <div className="mega-search-wrap">
-              <div className="mega-sidebar-title" style={{ marginTop: 20 }}>Quick Search</div>
+              <div className="mega-sidebar-title">Quick Search</div>
               <input
                 type="text"
                 className="mega-search-input"
