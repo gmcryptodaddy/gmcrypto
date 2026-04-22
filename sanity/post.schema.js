@@ -1,6 +1,4 @@
-// This file goes in: sanity-studio/schemas/post.js
-// (after you create the Sanity Studio project separately)
-
+// sanity-studio/schemas/post.schema.js
 export default {
   name: 'post',
   title: 'Post',
@@ -37,14 +35,17 @@ export default {
       type: 'string',
       options: {
         list: [
+          { title: 'News', value: 'News' },
+          { title: 'Breaking News', value: 'Breaking News' },
+          { title: 'Explainer', value: 'Explainer' },
           { title: 'Markets', value: 'Markets' },
-          { title: 'Bitcoin', value: 'Bitcoin' },
-          { title: 'Ethereum', value: 'Ethereum' },
+          { title: 'Companies', value: 'Companies' },
+          { title: 'TradFi', value: 'TradFi' },
+          { title: 'Policy', value: 'Policy' },
           { title: 'DeFi', value: 'DeFi' },
-          { title: 'NFTs', value: 'NFTs' },
-          { title: 'Regulation', value: 'Regulation' },
-          { title: 'Layer 2', value: 'Layer 2' },
+          { title: 'Tech', value: 'Tech' },
           { title: 'Web3', value: 'Web3' },
+          { title: 'Security', value: 'Security' },
         ]
       }
     },
