@@ -22,8 +22,7 @@ export default function Footer() {
           <h4>Products</h4>
           <Link href="/category/news">News</Link>
           <Link href="/category/learn">Learn</Link>
-          <Link href="/category/markets">Markets</Link>
-          <Link href="/category/analysis">Analysis</Link>
+          <Link href="/markets">Markets</Link>
         </div>
 
         <div className="footer-col">
