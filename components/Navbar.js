@@ -13,6 +13,7 @@ const NEWS_CATEGORIES = [
 export default function Navbar() {
   const [isDark, setIsDark] = useState(true)
   const [openDropdown, setOpenDropdown] = useState(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [recentPosts, setRecentPosts] = useState([])
   const [trendingCoins, setTrendingCoins] = useState([])
   const [searchValue, setSearchValue] = useState('')
@@ -26,6 +27,15 @@ export default function Navbar() {
       document.body.classList.add('light')
     }
   }, [])
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
 
   useEffect(() => {
     async function loadPosts() {
@@ -103,6 +113,10 @@ export default function Navbar() {
     setSearchResults([])
   }
 
+  const closeMobile = () => {
+    setMobileOpen(false)
+  }
+
   return (
     <nav className="nav">
       <div className="nav-inner">
@@ -110,6 +124,7 @@ export default function Navbar() {
           <img src={isDark ? '/logo.png' : '/logo-full.png'} alt="[ gm crypto ]" />
         </Link>
 
+        {/* Desktop nav links */}
         <div className="nav-links">
           <div
             className="nav-item-wrap"
@@ -142,15 +157,39 @@ export default function Navbar() {
           </div>
         </div>
 
-        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-          <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
-          <span className="toggle-track">
-            <span className="toggle-thumb" style={{ transform: isDark ? 'translateX(0)' : 'translateX(16px)' }} />
-          </span>
-        </button>
+        {/* Right side: theme toggle (desktop) + hamburger (mobile) */}
+        <div className="nav-right">
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+            <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
+            <span className="toggle-track">
+              <span className="toggle-thumb" style={{ transform: isDark ? 'translateX(0)' : 'translateX(16px)' }} />
+            </span>
+          </button>
+
+          <button
+            className="nav-hamburger"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Open menu"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              {mobileOpen ? (
+                <>
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="6" y1="18" x2="18" y2="6" />
+                </>
+              ) : (
+                <>
+                  <line x1="4" y1="7" x2="20" y2="7" />
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <line x1="4" y1="17" x2="20" y2="17" />
+                </>
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* News dropdown */}
+      {/* News dropdown (desktop) */}
       <div
         className={`mega-dropdown ${openDropdown === 'news' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('news')}
@@ -159,44 +198,25 @@ export default function Navbar() {
         <div className="mega-inner">
           <div className="mega-sidebar">
             <div className="mega-sidebar-title">Categories</div>
-            <Link href="/" className="mega-sidebar-link" onClick={closeDropdown}>
-              All News
-            </Link>
+            <Link href="/" className="mega-sidebar-link" onClick={closeDropdown}>All News</Link>
             {NEWS_CATEGORIES.map(cat => (
-              <Link
-                key={cat.href}
-                href={cat.href}
-                className="mega-sidebar-link"
-                onClick={closeDropdown}
-              >
+              <Link key={cat.href} href={cat.href} className="mega-sidebar-link" onClick={closeDropdown}>
                 {cat.label}
               </Link>
             ))}
           </div>
-
           <div className="mega-content">
             <div className="mega-content-title">Latest Articles</div>
             <div className="mega-posts-grid">
               {recentPosts.length > 0 ? recentPosts.map(post => (
-                <Link
-                  key={post._id}
-                  href={`/post/${post.slug.current}`}
-                  className="mega-post-card"
-                  onClick={closeDropdown}
-                >
+                <Link key={post._id} href={`/post/${post.slug.current}`} className="mega-post-card" onClick={closeDropdown}>
                   {post.mainImage ? (
-                    <img
-                      src={urlFor(post.mainImage).width(320).height(180).url()}
-                      alt={post.title}
-                      className="mega-post-img"
-                    />
+                    <img src={urlFor(post.mainImage).width(320).height(180).url()} alt={post.title} className="mega-post-img" />
                   ) : (
                     <div className="mega-post-img mega-post-img-placeholder" />
                   )}
                   <div className="mega-post-body">
-                    {post.category && (
-                      <span className="mega-post-cat">{post.category}</span>
-                    )}
+                    {post.category && <span className="mega-post-cat">{post.category}</span>}
                     <h4 className="mega-post-title">{post.title}</h4>
                   </div>
                 </Link>
@@ -208,7 +228,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Markets dropdown */}
+      {/* Markets dropdown (desktop) */}
       <div
         className={`mega-dropdown ${openDropdown === 'markets' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('markets')}
@@ -217,10 +237,7 @@ export default function Navbar() {
         <div className="mega-inner">
           <div className="mega-sidebar">
             <div className="mega-sidebar-title">Navigate</div>
-            <Link href="/markets" className="mega-sidebar-link" onClick={closeDropdown}>
-              Prices
-            </Link>
-
+            <Link href="/markets" className="mega-sidebar-link" onClick={closeDropdown}>Prices</Link>
             <div className="mega-search-wrap">
               <div className="mega-sidebar-title">Quick Search</div>
               <input
@@ -233,15 +250,8 @@ export default function Navbar() {
               {searchResults.length > 0 && (
                 <div className="mega-search-results">
                   {searchResults.map(coin => (
-                    <Link
-                      key={coin.id}
-                      href={`/markets/${coin.id}`}
-                      className="mega-search-result"
-                      onClick={closeDropdown}
-                    >
-                      {coin.thumb && (
-                        <img src={coin.thumb} alt={coin.name} className="mega-search-img" />
-                      )}
+                    <Link key={coin.id} href={`/markets/${coin.id}`} className="mega-search-result" onClick={closeDropdown}>
+                      {coin.thumb && <img src={coin.thumb} alt={coin.name} className="mega-search-img" />}
                       <div>
                         <div className="mega-search-name">{coin.name}</div>
                         <div className="mega-search-symbol">{coin.symbol}</div>
@@ -252,7 +262,6 @@ export default function Navbar() {
               )}
             </div>
           </div>
-
           <div className="mega-content">
             <div className="mega-content-title">Trending Coins</div>
             <div className="mega-coins-grid">
@@ -260,16 +269,9 @@ export default function Navbar() {
                 const change = coin.price_change_percentage_24h
                 const up = change >= 0
                 return (
-                  <Link
-                    key={coin.id}
-                    href={`/markets/${coin.id}`}
-                    className="mega-coin-card"
-                    onClick={closeDropdown}
-                  >
+                  <Link key={coin.id} href={`/markets/${coin.id}`} className="mega-coin-card" onClick={closeDropdown}>
                     <div className="mega-coin-top">
-                      {coin.image && (
-                        <img src={coin.image} alt={coin.name} className="mega-coin-img" />
-                      )}
+                      {coin.image && <img src={coin.image} alt={coin.name} className="mega-coin-img" />}
                       <span className="mega-coin-name">{coin.name}</span>
                     </div>
                     <div className={`mega-coin-change ${up ? 'up' : 'down'}`}>
@@ -281,6 +283,39 @@ export default function Navbar() {
                 <div className="mega-empty">Loading trending coins…</div>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile overlay menu */}
+      <div className={`mobile-menu ${mobileOpen ? 'mobile-menu-open' : ''}`}>
+        <div className="mobile-menu-inner">
+          <div className="mobile-menu-section">
+            <div className="mobile-menu-heading">Browse</div>
+            <Link href="/" className="mobile-menu-link" onClick={closeMobile}>All News</Link>
+            <Link href="/markets" className="mobile-menu-link" onClick={closeMobile}>Markets</Link>
+            <Link href="/category/learn" className="mobile-menu-link" onClick={closeMobile}>Learn</Link>
+          </div>
+
+          <div className="mobile-menu-section">
+            <div className="mobile-menu-heading">News Categories</div>
+            {NEWS_CATEGORIES.map(cat => (
+              <Link key={cat.href} href={cat.href} className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>
+                {cat.label}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mobile-menu-section">
+            <div className="mobile-menu-heading">About</div>
+            <Link href="/about" className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>About</Link>
+            <Link href="/advertise" className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>Advertise</Link>
+          </div>
+
+          <div className="mobile-menu-footer">
+            <a href="https://twitter.com/gm_cryptonews" target="_blank" rel="noopener noreferrer" className="mobile-menu-social">
+              Follow @gm_cryptonews →
+            </a>
           </div>
         </div>
       </div>
