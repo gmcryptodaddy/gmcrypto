@@ -1637,3 +1637,99 @@ body.light .ticker-down { color: #f44336; }
     font-size: 18px !important;
   }
 }
+/* ═══════════════════════════════════════════════ */
+/* ══════ SOCIAL ICONS (X + Telegram) ════════════ */
+/* ═══════════════════════════════════════════════ */
+
+.social-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  transition: all 0.15s;
+  text-decoration: none;
+}
+.social-icon-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.social-icon-btn svg {
+  display: block;
+}
+
+/* Small — for article top bar */
+.social-icons-sm .social-icon-btn {
+  width: 34px;
+  height: 34px;
+}
+.social-icons-sm .social-icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Medium — for footer */
+.social-icons-md .social-icon-btn {
+  width: 40px;
+  height: 40px;
+}
+.social-icons-md .social-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Large — for About page */
+.social-icons-lg .social-icon-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+}
+.social-icons-lg .social-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.social-icons-lg {
+  gap: 12px;
+}
+
+/* Article top actions wrapper (socials + share button) */
+.article-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* About page social block */
+.about-socials {
+  margin-bottom: 32px;
+}
+
+/* Footer social spacing */
+.footer-logo-col .social-icons {
+  margin-top: 8px;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  .social-icons-lg .social-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .social-icons-lg .social-icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .article-top-actions {
+    gap: 8px;
+  }
+}
