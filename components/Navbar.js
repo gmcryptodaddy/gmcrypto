@@ -32,8 +32,6 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [recentPosts, setRecentPosts] = useState([])
   const [trendingCoins, setTrendingCoins] = useState([])
-  const [searchValue, setSearchValue] = useState('')
-  const [searchResults, setSearchResults] = useState([])
   const closeTimer = useRef(null)
 
   useEffect(() => {
@@ -83,25 +81,6 @@ export default function Navbar() {
     loadTrending()
   }, [])
 
-  useEffect(() => {
-    if (!searchValue || searchValue.length < 2) {
-      setSearchResults([])
-      return
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(searchValue)}`
-        )
-        const data = await res.json()
-        setSearchResults((data.coins || []).slice(0, 5))
-      } catch (err) {
-        console.error('Search error:', err)
-      }
-    }, 250)
-    return () => clearTimeout(timer)
-  }, [searchValue])
-
   const toggleTheme = () => {
     const newDark = !isDark
     setIsDark(newDark)
@@ -123,12 +102,7 @@ export default function Navbar() {
     closeTimer.current = setTimeout(() => setOpenDropdown(null), 120)
   }
 
-  const closeDropdown = () => {
-    setOpenDropdown(null)
-    setSearchValue('')
-    setSearchResults([])
-  }
-
+  const closeDropdown = () => setOpenDropdown(null)
   const closeMobile = () => setMobileOpen(false)
 
   return (
@@ -240,13 +214,13 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Markets dropdown */}
+      {/* Markets dropdown — no Quick Search, tighter sidebar */}
       <div
         className={`mega-dropdown ${openDropdown === 'markets' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('markets')}
         onMouseLeave={handleLeave}
       >
-        <div className="mega-inner">
+        <div className="mega-inner mega-inner-tight">
           <div className="mega-sidebar">
             <div className="mega-sidebar-title">Navigate</div>
             {MARKETS_LINKS.map(link => (
@@ -254,30 +228,6 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-
-            <div className="mega-search-wrap">
-              <div className="mega-sidebar-title">Quick Search</div>
-              <input
-                type="text"
-                className="mega-search-input"
-                placeholder="Search coin…"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-              />
-              {searchResults.length > 0 && (
-                <div className="mega-search-results">
-                  {searchResults.map(coin => (
-                    <Link key={coin.id} href={`/markets/${coin.id}`} className="mega-search-result" onClick={closeDropdown}>
-                      {coin.thumb && <img src={coin.thumb} alt={coin.name} className="mega-search-img" />}
-                      <div>
-                        <div className="mega-search-name">{coin.name}</div>
-                        <div className="mega-search-symbol">{coin.symbol}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
           <div className="mega-content">
             <div className="mega-content-title">Trending Coins</div>
