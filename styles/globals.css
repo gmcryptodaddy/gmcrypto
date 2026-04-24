@@ -2783,3 +2783,72 @@ body.light .ticker-change.down { color: #f44336; }
   .social-icons-lg .social-icon-btn svg { width: 16px; height: 16px; }
   .article-top-actions { gap: 8px; }
 }
+/* ═══════════════════════════════════════════════════════════ */
+/* PATCH: Desktop scroll fix + mobile duplicate sidebar fix    */
+/* Append to the END of globals.css                             */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* ── Desktop: unlock page scroll ──────────────────────────── */
+/* Previously .home-layout was locked to 100vh with each column
+   scrolling independently. That broke natural page scroll and
+   cut off the footer. Now: the grid flows naturally down the
+   page, and the right sidebar sticks while you scroll. */
+
+@media (min-width: 769px) {
+  .home-layout {
+    height: auto !important;
+    overflow: visible !important;
+    padding-top: 0;
+    padding-bottom: 40px;
+    align-items: start;
+  }
+  .latest-feed {
+    position: sticky;
+    top: 101px; /* ticker(~33px) + nav(68px) */
+    height: calc(100vh - 101px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .center-col {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: calc(100vh - 101px);
+  }
+  .home-sidebar {
+    position: sticky;
+    top: 101px;
+    height: calc(100vh - 101px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 28px 0 28px 24px;
+  }
+  .home-sidebar .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    height: auto;
+    overflow: visible;
+  }
+  /* Scrollbar styling for the two sticky columns */
+  .latest-feed::-webkit-scrollbar,
+  .home-sidebar::-webkit-scrollbar {
+    width: 3px;
+  }
+  .latest-feed::-webkit-scrollbar-thumb,
+  .home-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border2);
+  }
+}
+
+/* ── Mobile: make sure .home-sidebar is fully hidden ──────── */
+/* The .desktop-only class already does this via !important,
+   but defense in depth — explicitly hide the outer sidebar
+   wrapper on mobile so the inline .mobile-sidebar-wrap is
+   the only one that renders. */
+
+@media (max-width: 768px) {
+  .home-sidebar {
+    display: none !important;
+  }
+}
