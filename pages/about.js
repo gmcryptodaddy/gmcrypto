@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Ticker from '../components/Ticker'
 import Footer from '../components/Footer'
+import SocialIcons from '../components/SocialIcons'
 
 export default function AboutPage() {
   return (
@@ -58,6 +59,14 @@ export default function AboutPage() {
           </p>
 
           <div className="static-divider" />
+
+          <h2>Follow along</h2>
+          <p>
+            Get our latest stories, market takes, and breaking news straight to your feed.
+          </p>
+          <div className="about-socials">
+            <SocialIcons size="lg" />
+          </div>
 
           <div className="static-cta-row">
             <Link href="/" className="static-cta-btn">Read the latest →</Link>
