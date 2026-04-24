@@ -70,7 +70,6 @@ export default function Home({ posts }) {
 
   const visiblePosts = filteredPosts.slice(0, visibleCount)
   const hasMore = visibleCount < filteredPosts.length
-
   const latestPosts = allPosts.slice(0, 15)
 
   const scrollFilters = (dir) => {
@@ -94,7 +93,6 @@ export default function Home({ posts }) {
       <Head>
         <title>GM Crypto News</title>
         <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         <meta property="og:title" content="GM Crypto News" />
         <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
@@ -116,6 +114,7 @@ export default function Home({ posts }) {
       <Navbar />
 
       <div className="home-layout">
+        {/* LEFT: Latest news (desktop only) */}
         <aside className="latest-feed desktop-only">
           <div className="feed-header">
             <span className="feed-dot" />
@@ -140,8 +139,9 @@ export default function Home({ posts }) {
           </div>
         </aside>
 
+        {/* CENTER: Main feed */}
         <main className="center-col">
-          {/* Mobile: dropdown filter. Desktop: horizontal pills */}
+          {/* Desktop filter pills */}
           <div className="filter-bar desktop-only">
             <button
               className="filter-arrow"
@@ -178,6 +178,7 @@ export default function Home({ posts }) {
             </button>
           </div>
 
+          {/* Mobile dropdown filter */}
           <div className="filter-bar-mobile mobile-only">
             <label className="filter-dropdown-label">Category</label>
             <div className="filter-dropdown-wrap">
@@ -198,7 +199,7 @@ export default function Home({ posts }) {
 
           {visiblePosts.length > 0 ? (
             <>
-              {/* Desktop view: full article cards */}
+              {/* DESKTOP article list */}
               <div className="article-list desktop-only">
                 {visiblePosts.map(post => {
                   const hashtags = generateHashtags(post.title, post.category, 3)
@@ -261,7 +262,7 @@ export default function Home({ posts }) {
                 })}
               </div>
 
-              {/* Mobile view: hero + compact list */}
+              {/* MOBILE article list: hero + compact rows */}
               <div className="article-list-mobile mobile-only">
                 {heroPost && (() => {
                   const heroHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
@@ -345,43 +346,41 @@ export default function Home({ posts }) {
                   </span>
                 </div>
               )}
-
-              {/* Sidebar widgets shown at the bottom of feed on mobile only */}
-              <div className="mobile-sidebar-wrap mobile-only">
-                <Sidebar />
-              </div>
-
-              <Footer />
             </>
           ) : (
-            <>
-              <div className="filter-empty">
-                <div className="filter-empty-emoji">
-                  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#FF6B00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <ellipse cx="50" cy="55" rx="32" ry="28" />
-                    <circle cx="32" cy="28" r="11" />
-                    <circle cx="68" cy="28" r="11" />
-                    <circle cx="32" cy="28" r="3" fill="#FF6B00" />
-                    <circle cx="68" cy="28" r="3" fill="#FF6B00" />
-                    <path d="M 32 62 Q 50 74 68 62" />
-                    <circle cx="26" cy="58" r="1.5" fill="#FF6B00" />
-                    <circle cx="74" cy="58" r="1.5" fill="#FF6B00" />
-                  </svg>
-                </div>
-                <div className="filter-empty-text">Let us cook</div>
-                <div className="filter-empty-sub">
-                  No articles in "{activeFilter}" yet — check back soon.
-                </div>
+            <div className="filter-empty">
+              <div className="filter-empty-emoji">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#FF6B00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <ellipse cx="50" cy="55" rx="32" ry="28" />
+                  <circle cx="32" cy="28" r="11" />
+                  <circle cx="68" cy="28" r="11" />
+                  <circle cx="32" cy="28" r="3" fill="#FF6B00" />
+                  <circle cx="68" cy="28" r="3" fill="#FF6B00" />
+                  <path d="M 32 62 Q 50 74 68 62" />
+                  <circle cx="26" cy="58" r="1.5" fill="#FF6B00" />
+                  <circle cx="74" cy="58" r="1.5" fill="#FF6B00" />
+                </svg>
               </div>
-              <Footer />
-            </>
+              <div className="filter-empty-text">Let us cook</div>
+              <div className="filter-empty-sub">
+                No articles in "{activeFilter}" yet — check back soon.
+              </div>
+            </div>
           )}
+
+          {/* Mobile only: sidebar widgets at bottom of feed */}
+          <div className="mobile-sidebar-wrap mobile-only">
+            <Sidebar />
+          </div>
         </main>
 
-        <div className="desktop-only-sidebar">
+        {/* RIGHT: Sidebar (desktop only) */}
+        <div className="home-sidebar desktop-only">
           <Sidebar />
         </div>
       </div>
+
+      <Footer />
     </>
   )
 }
