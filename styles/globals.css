@@ -2118,3 +2118,176 @@ body.light .ticker-down { color: #f44336; }
     font-size: 15px;
   }
 }
+/* ═══════════════════════════════════════════════ */
+/* ══════ FIXES & ENHANCEMENTS ═══════════════════ */
+/* ═══════════════════════════════════════════════ */
+
+/* ── Coin chart: type toggle + error state ── */
+.coin-chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.coin-chart-ranges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.coin-chart-types {
+  display: flex;
+  gap: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.chart-type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 6px;
+}
+.chart-type-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+.chart-type-btn.active {
+  background: var(--bg);
+  color: var(--accent);
+}
+.chart-type-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.chart-range-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coin-chart-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--red);
+  letter-spacing: 0.02em;
+  text-align: center;
+  padding: 20px;
+}
+
+/* ── Trending coin cards in navbar dropdown — BIGGER with price ── */
+.mega-coin-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s, transform 0.15s;
+  min-width: 0;
+}
+.mega-coin-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.mega-coin-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.mega-coin-img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mega-coin-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.mega-coin-name {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mega-coin-symbol {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+.mega-coin-price {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.mega-coin-change {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Exchange partner badge ── */
+.exchange-card-partner {
+  border-color: var(--accent);
+}
+.exchange-card-partner:hover {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.exchange-card-badge {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(255, 107, 0, 0.12);
+  border: 1px solid rgba(255, 107, 0, 0.4);
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .mega-coins-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .coin-chart-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .coin-chart-types {
+    align-self: stretch;
+    justify-content: center;
+  }
+  .chart-type-btn {
+    flex: 1;
+  }
+}
