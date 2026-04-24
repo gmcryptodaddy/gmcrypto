@@ -10,6 +10,14 @@ const NEWS_CATEGORIES = [
   { label: 'TradFi', href: '/category/tradfi' },
 ]
 
+const MARKETS_LINKS = [
+  { label: 'Prices', href: '/markets' },
+  { label: 'Top Gainers', href: '/markets/gainers' },
+  { label: 'Top Losers', href: '/markets/losers' },
+  { label: 'Converter', href: '/markets/converter' },
+  { label: 'Exchanges', href: '/markets/exchanges' },
+]
+
 export default function Navbar() {
   const [isDark, setIsDark] = useState(true)
   const [openDropdown, setOpenDropdown] = useState(null)
@@ -113,9 +121,7 @@ export default function Navbar() {
     setSearchResults([])
   }
 
-  const closeMobile = () => {
-    setMobileOpen(false)
-  }
+  const closeMobile = () => setMobileOpen(false)
 
   return (
     <nav className="nav">
@@ -124,7 +130,6 @@ export default function Navbar() {
           <img src={isDark ? '/logo.png' : '/logo-full.png'} alt="[ gm crypto ]" />
         </Link>
 
-        {/* Desktop nav links */}
         <div className="nav-links">
           <div
             className="nav-item-wrap"
@@ -157,7 +162,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Right side: theme toggle (desktop) + hamburger (mobile) */}
         <div className="nav-right">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
             <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
@@ -189,7 +193,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* News dropdown (desktop) */}
+      {/* News dropdown */}
       <div
         className={`mega-dropdown ${openDropdown === 'news' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('news')}
@@ -228,7 +232,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Markets dropdown (desktop) */}
+      {/* Markets dropdown */}
       <div
         className={`mega-dropdown ${openDropdown === 'markets' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('markets')}
@@ -237,7 +241,12 @@ export default function Navbar() {
         <div className="mega-inner">
           <div className="mega-sidebar">
             <div className="mega-sidebar-title">Navigate</div>
-            <Link href="/markets" className="mega-sidebar-link" onClick={closeDropdown}>Prices</Link>
+            {MARKETS_LINKS.map(link => (
+              <Link key={link.href} href={link.href} className="mega-sidebar-link" onClick={closeDropdown}>
+                {link.label}
+              </Link>
+            ))}
+
             <div className="mega-search-wrap">
               <div className="mega-sidebar-title">Quick Search</div>
               <input
@@ -295,6 +304,14 @@ export default function Navbar() {
             <Link href="/" className="mobile-menu-link" onClick={closeMobile}>All News</Link>
             <Link href="/markets" className="mobile-menu-link" onClick={closeMobile}>Markets</Link>
             <Link href="/category/learn" className="mobile-menu-link" onClick={closeMobile}>Learn</Link>
+          </div>
+
+          <div className="mobile-menu-section">
+            <div className="mobile-menu-heading">Markets</div>
+            <Link href="/markets/gainers" className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>Top Gainers</Link>
+            <Link href="/markets/losers" className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>Top Losers</Link>
+            <Link href="/markets/converter" className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>Converter</Link>
+            <Link href="/markets/exchanges" className="mobile-menu-link mobile-menu-sublink" onClick={closeMobile}>Exchanges</Link>
           </div>
 
           <div className="mobile-menu-section">
