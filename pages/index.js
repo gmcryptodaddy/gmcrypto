@@ -85,6 +85,10 @@ export default function Home({ posts }) {
     setVisibleCount(prev => prev + POSTS_PER_PAGE)
   }
 
+  // For mobile: hero = first article, rest = compact list
+  const heroPost = visiblePosts[0] || null
+  const restPosts = visiblePosts.slice(1)
+
   return (
     <>
       <Head>
@@ -112,7 +116,7 @@ export default function Home({ posts }) {
       <Navbar />
 
       <div className="home-layout">
-        <aside className="latest-feed">
+        <aside className="latest-feed desktop-only">
           <div className="feed-header">
             <span className="feed-dot" />
             <span className="feed-title">Latest news</span>
@@ -137,7 +141,8 @@ export default function Home({ posts }) {
         </aside>
 
         <main className="center-col">
-          <div className="filter-bar">
+          {/* Mobile: dropdown filter. Desktop: horizontal pills */}
+          <div className="filter-bar desktop-only">
             <button
               className="filter-arrow"
               onClick={() => scrollFilters('left')}
@@ -173,67 +178,162 @@ export default function Home({ posts }) {
             </button>
           </div>
 
+          <div className="filter-bar-mobile mobile-only">
+            <label className="filter-dropdown-label">Category</label>
+            <div className="filter-dropdown-wrap">
+              <select
+                className="filter-dropdown"
+                value={activeFilter}
+                onChange={(e) => setActiveFilter(e.target.value)}
+              >
+                {FILTERS.map(f => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+              <svg className="filter-dropdown-caret" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
           {visiblePosts.length > 0 ? (
-            <div className="article-list">
-              {visiblePosts.map(post => {
-                const hashtags = generateHashtags(post.title, post.category, 3)
-                return (
-                  <article key={post._id} className="article-item">
-                    <Link href={`/post/${post.slug.current}`}>
-                      {post.mainImage ? (
-                        <img
-                          src={urlFor(post.mainImage).width(900).height(500).url()}
-                          alt={post.title}
-                          className="article-item-img"
-                        />
-                      ) : (
-                        <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
-                      )}
-                    </Link>
-
-                    <div className="article-item-meta">
-                      <div className="article-item-author">
-                        {post.author?.image && (
+            <>
+              {/* Desktop view: full article cards */}
+              <div className="article-list desktop-only">
+                {visiblePosts.map(post => {
+                  const hashtags = generateHashtags(post.title, post.category, 3)
+                  return (
+                    <article key={post._id} className="article-item">
+                      <Link href={`/post/${post.slug.current}`}>
+                        {post.mainImage ? (
                           <img
-                            src={urlFor(post.author.image).width(60).height(60).url()}
-                            alt={post.author.name}
-                            className="article-item-avatar"
+                            src={urlFor(post.mainImage).width(900).height(500).url()}
+                            alt={post.title}
+                            className="article-item-img"
                           />
+                        ) : (
+                          <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
                         )}
-                        {post.author?.name && (
-                          <span className="article-item-author-name">{post.author.name}</span>
-                        )}
-                      </div>
-                      <div className="article-item-tags">
-                        {post.category && <span className="article-item-tag">{post.category}</span>}
-                      </div>
-                    </div>
-
-                    <Link href={`/post/${post.slug.current}`}>
-                      <h2 className="article-item-title">{post.title}</h2>
-                    </Link>
-
-                    {post.excerpt && (
-                      <p className="article-item-excerpt">{post.excerpt}</p>
-                    )}
-
-                    {hashtags.length > 0 && (
-                      <div className="article-item-hashtags">
-                        {hashtags.map(tag => (
-                          <span key={tag} className="article-hashtag">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="article-item-footer">
-                      <Link href={`/post/${post.slug.current}`} className="article-read-btn">
-                        Read
                       </Link>
-                      <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
-                    </div>
-                  </article>
-                )
-              })}
+
+                      <div className="article-item-meta">
+                        <div className="article-item-author">
+                          {post.author?.image && (
+                            <img
+                              src={urlFor(post.author.image).width(60).height(60).url()}
+                              alt={post.author.name}
+                              className="article-item-avatar"
+                            />
+                          )}
+                          {post.author?.name && (
+                            <span className="article-item-author-name">{post.author.name}</span>
+                          )}
+                        </div>
+                        <div className="article-item-tags">
+                          {post.category && <span className="article-item-tag">{post.category}</span>}
+                        </div>
+                      </div>
+
+                      <Link href={`/post/${post.slug.current}`}>
+                        <h2 className="article-item-title">{post.title}</h2>
+                      </Link>
+
+                      {post.excerpt && (
+                        <p className="article-item-excerpt">{post.excerpt}</p>
+                      )}
+
+                      {hashtags.length > 0 && (
+                        <div className="article-item-hashtags">
+                          {hashtags.map(tag => (
+                            <span key={tag} className="article-hashtag">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="article-item-footer">
+                        <Link href={`/post/${post.slug.current}`} className="article-read-btn">
+                          Read
+                        </Link>
+                        <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+
+              {/* Mobile view: hero + compact list */}
+              <div className="article-list-mobile mobile-only">
+                {heroPost && (() => {
+                  const heroHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
+                  return (
+                    <article className="mobile-hero-article">
+                      <Link href={`/post/${heroPost.slug.current}`}>
+                        {heroPost.mainImage ? (
+                          <img
+                            src={urlFor(heroPost.mainImage).width(800).height(450).url()}
+                            alt={heroPost.title}
+                            className="mobile-hero-img"
+                          />
+                        ) : (
+                          <div className="mobile-hero-img img-placeholder">[ no image ]</div>
+                        )}
+                      </Link>
+                      <div className="mobile-hero-body">
+                        <div className="mobile-hero-meta">
+                          {heroPost.category && (
+                            <span className="mobile-hero-cat">{heroPost.category}</span>
+                          )}
+                          <span className="mobile-hero-time">{timeAgo(heroPost.publishedAt)}</span>
+                        </div>
+                        <Link href={`/post/${heroPost.slug.current}`}>
+                          <h2 className="mobile-hero-title">{heroPost.title}</h2>
+                        </Link>
+                        {heroPost.excerpt && (
+                          <p className="mobile-hero-excerpt">{heroPost.excerpt}</p>
+                        )}
+                        {heroHashtags.length > 0 && (
+                          <div className="mobile-hero-hashtags">
+                            {heroHashtags.map(tag => (
+                              <span key={tag} className="article-hashtag">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  )
+                })()}
+
+                {restPosts.length > 0 && (
+                  <div className="mobile-article-list">
+                    {restPosts.map(post => (
+                      <Link
+                        key={post._id}
+                        href={`/post/${post.slug.current}`}
+                        className="mobile-article-row"
+                      >
+                        {post.mainImage ? (
+                          <img
+                            src={urlFor(post.mainImage).width(240).height(240).url()}
+                            alt={post.title}
+                            className="mobile-article-thumb"
+                          />
+                        ) : (
+                          <div className="mobile-article-thumb img-placeholder">—</div>
+                        )}
+                        <div className="mobile-article-text">
+                          <div className="mobile-article-meta">
+                            {post.category && (
+                              <span className="mobile-article-cat">{post.category}</span>
+                            )}
+                          </div>
+                          <h3 className="mobile-article-title">{post.title}</h3>
+                          <div className="mobile-article-time">{timeAgo(post.publishedAt)}</div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {hasMore && (
                 <div className="load-more-wrap">
@@ -246,8 +346,13 @@ export default function Home({ posts }) {
                 </div>
               )}
 
+              {/* Sidebar widgets shown at the bottom of feed on mobile only */}
+              <div className="mobile-sidebar-wrap mobile-only">
+                <Sidebar />
+              </div>
+
               <Footer />
-            </div>
+            </>
           ) : (
             <>
               <div className="filter-empty">
@@ -273,7 +378,9 @@ export default function Home({ posts }) {
           )}
         </main>
 
-        <Sidebar />
+        <div className="desktop-only-sidebar">
+          <Sidebar />
+        </div>
       </div>
     </>
   )
