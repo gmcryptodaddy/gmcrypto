@@ -6,6 +6,7 @@ import Ticker from '../../components/Ticker'
 import Sidebar from '../../components/Sidebar'
 import Footer from '../../components/Footer'
 import ShareButton from '../../components/ShareButton'
+import SocialIcons from '../../components/SocialIcons'
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery } from '../../lib/queries'
 import { generateHashtags } from '../../lib/hashtags'
@@ -118,7 +119,11 @@ export default function PostPage({ post }) {
                 )}
                 <span style={{ fontSize: 12, color: 'var(--text2)' }}>Article</span>
               </div>
-              <ShareButton url={postUrl} title={post.title} />
+
+              <div className="article-top-actions">
+                <SocialIcons size="sm" />
+                <ShareButton url={postUrl} title={post.title} />
+              </div>
             </div>
 
             {post.category && <span className="category-tag">{post.category}</span>}
