@@ -2852,3 +2852,94 @@ body.light .ticker-change.down { color: #f44336; }
     display: none !important;
   }
 }
+/* ═══════════════════════════════════════════════════════════ */
+/* PATCH: desktop sidebar restore, ticker height, markets dd    */
+/* Append to the END of globals.css                             */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* ── FIX #1: restore 3-col grid + sidebar on desktop ──────── */
+/* The issue: .desktop-only was applied to .home-sidebar, which
+   collapsed to display:block and the sidebar inside rendered
+   at 0 width. We now force the grid to keep its 3 columns and
+   the sidebar column to be visible with correct flex layout. */
+
+@media (min-width: 769px) {
+  .home-layout {
+    display: grid !important;
+    grid-template-columns: 240px 1fr 380px !important;
+    height: auto !important;
+    overflow: visible !important;
+    align-items: start;
+    padding-bottom: 40px;
+  }
+  .home-layout > .latest-feed,
+  .home-layout > .home-sidebar {
+    display: block !important;
+  }
+  .home-sidebar {
+    position: sticky;
+    top: 101px;
+    max-height: calc(100vh - 101px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 28px 0 28px 24px;
+    box-sizing: border-box;
+  }
+  .home-sidebar > .sidebar {
+    display: flex !important;
+    flex-direction: column;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+  .home-sidebar .widget {
+    padding: 0 0 24px 0;
+  }
+  .home-sidebar::-webkit-scrollbar {
+    width: 3px;
+  }
+  .home-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border2);
+  }
+  /* Hide the duplicate mobile sidebar wrapper on desktop */
+  .mobile-sidebar-wrap {
+    display: none !important;
+  }
+}
+
+/* ── FIX #2: ticker slimmer on desktop ────────────────────── */
+@media (min-width: 769px) {
+  .ticker {
+    padding: 4px 0;
+    min-height: 24px;
+  }
+  .ticker-item {
+    font-size: 11px;
+    margin: 0 20px;
+    gap: 6px;
+  }
+  .ticker-symbol,
+  .ticker-price {
+    font-size: 11px;
+  }
+  .ticker-change {
+    font-size: 10px;
+  }
+}
+
+/* ── FIX #3: Markets dropdown — no Quick Search, tighter ──── */
+/* The sidebar nav list is shorter now (no search), so we can
+   use a narrower left column for the Markets dropdown only. */
+
+.mega-inner-tight {
+  grid-template-columns: 160px 1fr !important;
+  padding-top: 22px !important;
+  padding-bottom: 22px !important;
+}
+
+/* Reduce vertical space between nav links in dropdown since
+   there are only 5 links now */
+.mega-inner-tight .mega-sidebar-link {
+  padding: 6px 0;
+}
