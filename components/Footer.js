@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import SocialIcons from './SocialIcons'
 
 export default function Footer() {
   return (
@@ -9,6 +10,7 @@ export default function Footer() {
           <p className="footer-tagline">
             Your daily dose of crypto news, market analysis, and blockchain insights.
           </p>
+          <SocialIcons size="md" />
         </div>
 
         <div className="footer-col">
