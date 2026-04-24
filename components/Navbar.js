@@ -18,6 +18,14 @@ const MARKETS_LINKS = [
   { label: 'Exchanges', href: '/markets/exchanges' },
 ]
 
+function formatCoinPrice(price) {
+  if (price == null) return '$—'
+  if (price >= 1000) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (price >= 1) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  if (price >= 0.01) return '$' + price.toFixed(4)
+  return '$' + price.toFixed(6)
+}
+
 export default function Navbar() {
   const [isDark, setIsDark] = useState(true)
   const [openDropdown, setOpenDropdown] = useState(null)
@@ -281,8 +289,12 @@ export default function Navbar() {
                   <Link key={coin.id} href={`/markets/${coin.id}`} className="mega-coin-card" onClick={closeDropdown}>
                     <div className="mega-coin-top">
                       {coin.image && <img src={coin.image} alt={coin.name} className="mega-coin-img" />}
-                      <span className="mega-coin-name">{coin.name}</span>
+                      <div className="mega-coin-names">
+                        <span className="mega-coin-name">{coin.name}</span>
+                        <span className="mega-coin-symbol">{coin.symbol?.toUpperCase()}</span>
+                      </div>
                     </div>
+                    <div className="mega-coin-price">{formatCoinPrice(coin.current_price)}</div>
                     <div className={`mega-coin-change ${up ? 'up' : 'down'}`}>
                       {up ? '+' : ''}{change?.toFixed(2)}%
                     </div>
