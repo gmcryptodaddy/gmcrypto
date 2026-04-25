@@ -214,7 +214,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Markets dropdown — no Quick Search, tighter sidebar */}
+      {/* Markets dropdown — no Quick Search, tighter */}
       <div
         className={`mega-dropdown ${openDropdown === 'markets' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('markets')}
