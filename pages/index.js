@@ -84,7 +84,6 @@ export default function Home({ posts }) {
     setVisibleCount(prev => prev + POSTS_PER_PAGE)
   }
 
-  // For mobile: hero = first article, rest = compact list
   const heroPost = visiblePosts[0] || null
   const restPosts = visiblePosts.slice(1)
 
@@ -114,8 +113,8 @@ export default function Home({ posts }) {
       <Navbar />
 
       <div className="home-layout">
-        {/* LEFT: Latest news (desktop only) */}
-        <aside className="latest-feed desktop-only">
+        {/* LEFT: Latest news (desktop only via CSS) */}
+        <aside className="latest-feed">
           <div className="feed-header">
             <span className="feed-dot" />
             <span className="feed-title">Latest news</span>
@@ -141,8 +140,7 @@ export default function Home({ posts }) {
 
         {/* CENTER: Main feed */}
         <main className="center-col">
-          {/* Desktop filter pills */}
-          <div className="filter-bar desktop-only">
+          <div className="filter-bar">
             <button
               className="filter-arrow"
               onClick={() => scrollFilters('left')}
@@ -178,8 +176,7 @@ export default function Home({ posts }) {
             </button>
           </div>
 
-          {/* Mobile dropdown filter */}
-          <div className="filter-bar-mobile mobile-only">
+          <div className="filter-bar-mobile">
             <label className="filter-dropdown-label">Category</label>
             <div className="filter-dropdown-wrap">
               <select
@@ -200,7 +197,7 @@ export default function Home({ posts }) {
           {visiblePosts.length > 0 ? (
             <>
               {/* DESKTOP article list */}
-              <div className="article-list desktop-only">
+              <div className="article-list">
                 {visiblePosts.map(post => {
                   const hashtags = generateHashtags(post.title, post.category, 3)
                   return (
@@ -263,7 +260,7 @@ export default function Home({ posts }) {
               </div>
 
               {/* MOBILE article list: hero + compact rows */}
-              <div className="article-list-mobile mobile-only">
+              <div className="article-list-mobile">
                 {heroPost && (() => {
                   const heroHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
                   return (
@@ -368,16 +365,16 @@ export default function Home({ posts }) {
             </div>
           )}
 
-          {/* Mobile only: sidebar widgets at bottom of feed */}
-          <div className="mobile-sidebar-wrap mobile-only">
+          {/* Mobile-only: sidebar widgets at bottom of feed */}
+          <div className="mobile-sidebar-wrap">
             <Sidebar />
           </div>
         </main>
 
-        {/* RIGHT: Sidebar (desktop only) */}
-        <div className="home-sidebar desktop-only">
+        {/* RIGHT: Sidebar (desktop only via CSS) */}
+        <aside className="home-sidebar">
           <Sidebar />
-        </div>
+        </aside>
       </div>
 
       <Footer />
