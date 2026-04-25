@@ -1,9 +1,9 @@
-/* ═══════════════════════════════════════════════════════════ */
-/* GM CRYPTO — globals.css                                      */
-/* Consolidated, deduped. Replaces all previous appends.        */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* GM CRYPTO NEWS — globals.css                                  */
+/* Clean consolidated version. Replaces all previous appends.    */
+/* ════════════════════════════════════════════════════════════ */
 
-/* ─── CSS variables ─────────────────────────────────────── */
+/* ─── CSS variables ──────────────────────────────────────── */
 :root {
   --bg: #000000;
   --bg2: #0a0a0a;
@@ -59,15 +59,61 @@ img { max-width: 100%; display: block; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border2); }
 
-/* ─── Visibility helpers ─────────────────────────────────── */
-.desktop-only { display: block; }
-.mobile-only { display: none; }
-@media (max-width: 768px) {
-  .desktop-only { display: none !important; }
-  .mobile-only { display: block !important; }
+/* ════════════════════════════════════════════════════════════ */
+/* TICKER (slim horizontal marquee)                              */
+/* ════════════════════════════════════════════════════════════ */
+.ticker {
+  background: var(--text);
+  color: var(--bg);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  min-height: 24px;
+}
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  animation: tickerScroll 60s linear infinite;
+  white-space: nowrap;
+  will-change: transform;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: var(--bg);
+  transition: opacity 0.15s;
+}
+.ticker-item:hover { opacity: 0.7; }
+.ticker-symbol { font-weight: 700; color: var(--bg); }
+.ticker-price { color: var(--bg); }
+.ticker-change { font-size: 10px; font-weight: 600; }
+.ticker-change.up { color: #1a5c1a; }
+.ticker-change.down { color: #8b0000; }
+body.light .ticker { background: #000; color: #fff; }
+body.light .ticker-item,
+body.light .ticker-symbol,
+body.light .ticker-price { color: #fff; }
+body.light .ticker-change.up { color: #4caf50; }
+body.light .ticker-change.down { color: #f44336; }
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
-/* ─── Theme toggle ──────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════ */
+/* THEME TOGGLE                                                  */
+/* ════════════════════════════════════════════════════════════ */
 .theme-toggle {
   background: none;
   border: none;
@@ -108,62 +154,9 @@ img { max-width: 100%; display: block; }
   transition: transform 0.25s;
 }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* TICKER — horizontal scroll marquee                           */
-/* ═══════════════════════════════════════════════════════════ */
-.ticker {
-  background: var(--text);
-  color: var(--bg);
-  overflow: hidden;
-  white-space: nowrap;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
-  width: 100%;
-  min-height: 33px;
-}
-.ticker-track {
-  display: inline-flex;
-  align-items: center;
-  animation: tickerScroll 60s linear infinite;
-  white-space: nowrap;
-  will-change: transform;
-}
-.ticker-track:hover {
-  animation-play-state: paused;
-}
-.ticker-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 24px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  color: var(--bg);
-  transition: opacity 0.15s;
-}
-.ticker-item:hover { opacity: 0.7; }
-.ticker-symbol { font-weight: 700; color: var(--bg); }
-.ticker-price { color: var(--bg); }
-.ticker-change { font-weight: 600; }
-.ticker-change.up { color: #1a5c1a; }
-.ticker-change.down { color: #8b0000; }
-body.light .ticker { background: #000; color: #fff; }
-body.light .ticker-item,
-body.light .ticker-symbol,
-body.light .ticker-price { color: #fff; }
-body.light .ticker-change.up { color: #4caf50; }
-body.light .ticker-change.down { color: #f44336; }
-
-@keyframes tickerScroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-/* ═══════════════════════════════════════════════════════════ */
-/* NAV                                                          */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* NAV                                                           */
+/* ════════════════════════════════════════════════════════════ */
 .nav {
   border-bottom: 1px solid var(--border);
   background: var(--bg);
@@ -186,11 +179,7 @@ body.light .ticker-change.down { color: #f44336; }
   align-items: center;
   flex-shrink: 0;
 }
-.nav-logo img {
-  height: 26px;
-  width: auto;
-  display: block;
-}
+.nav-logo img { height: 26px; width: auto; display: block; }
 .nav-links {
   display: flex;
   align-items: center;
@@ -219,13 +208,11 @@ body.light .ticker-change.down { color: #f44336; }
 }
 .nav-link-item:hover { color: var(--accent); }
 
-/* Bracket hover effect */
+/* Bracket hover [ item ] */
 .nav-link-item::before,
 .nav-link-item::after {
-  content: '';
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
   font-family: var(--font-mono);
   font-size: 20px;
   font-weight: 400;
@@ -235,16 +222,8 @@ body.light .ticker-change.down { color: #f44336; }
   pointer-events: none;
   line-height: 1;
 }
-.nav-link-item::before {
-  content: '[';
-  left: -14px;
-  transform: translate(4px, -50%);
-}
-.nav-link-item::after {
-  content: ']';
-  right: -14px;
-  transform: translate(-4px, -50%);
-}
+.nav-link-item::before { content: '['; left: -14px; transform: translate(4px, -50%); }
+.nav-link-item::after { content: ']'; right: -14px; transform: translate(-4px, -50%); }
 .nav-link-item:hover::before,
 .nav-item-wrap:hover .nav-link-item::before {
   opacity: 0.6;
@@ -290,7 +269,7 @@ body.light .ticker-change.down { color: #f44336; }
 .nav-hamburger:hover { background: var(--bg2); }
 .nav-hamburger svg { width: 24px; height: 24px; }
 
-/* ─── Mega dropdown ─────────────────────────────────────── */
+/* ─── Mega dropdown ──────────────────────────────────────── */
 .mega-dropdown {
   position: absolute;
   top: 100%;
@@ -318,6 +297,11 @@ body.light .ticker-change.down { color: #f44336; }
   grid-template-columns: 200px 1fr;
   gap: 40px;
 }
+/* Tight variant for Markets dropdown (no Quick Search) */
+.mega-inner-tight {
+  grid-template-columns: 160px 1fr;
+  padding: 22px 32px 22px;
+}
 .mega-sidebar {
   display: flex;
   flex-direction: column;
@@ -340,60 +324,10 @@ body.light .ticker-change.down { color: #f44336; }
   transition: color 0.15s;
   display: block;
 }
+.mega-inner-tight .mega-sidebar-link { padding: 6px 0; }
 .mega-sidebar-link:hover { color: var(--accent); }
 
-.mega-search-wrap { margin-top: 4px; }
-.mega-search-wrap .mega-sidebar-title { margin-top: 14px !important; }
-.mega-search-input {
-  width: 100%;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: var(--font-serif);
-  font-size: 13px;
-  padding: 9px 12px;
-  outline: none;
-  border-radius: 8px;
-  transition: border-color 0.15s;
-}
-.mega-search-input:focus { border-color: var(--accent); }
-.mega-search-input::placeholder { color: var(--text3); }
-.mega-search-results {
-  margin-top: 8px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.mega-search-result {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.15s;
-}
-.mega-search-result:last-child { border-bottom: none; }
-.mega-search-result:hover { background: var(--bg3); }
-.mega-search-img { width: 22px; height: 22px; border-radius: 50%; }
-.mega-search-name {
-  font-family: var(--font-serif);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.2;
-}
-.mega-search-symbol {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text3);
-  letter-spacing: 0.04em;
-}
-
-.mega-content {
-  display: flex;
-  flex-direction: column;
-}
+.mega-content { display: flex; flex-direction: column; }
 .mega-content-title {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -403,6 +337,7 @@ body.light .ticker-change.down { color: #f44336; }
   margin-bottom: 12px;
   font-weight: 500;
 }
+
 .mega-posts-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -518,7 +453,7 @@ body.light .ticker-change.down { color: #f44336; }
   padding: 16px 0;
 }
 
-/* ─── Mobile menu overlay ───────────────────────────────── */
+/* ─── Mobile menu overlay ────────────────────────────────── */
 .mobile-menu {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -530,10 +465,7 @@ body.light .ticker-change.down { color: #f44336; }
   overflow-y: auto;
   padding-top: 68px;
 }
-.mobile-menu-open {
-  opacity: 1;
-  pointer-events: auto;
-}
+.mobile-menu-open { opacity: 1; pointer-events: auto; }
 .mobile-menu-inner {
   padding: 32px 24px 48px;
   max-width: 500px;
@@ -561,11 +493,7 @@ body.light .ticker-change.down { color: #f44336; }
 }
 .mobile-menu-link:hover,
 .mobile-menu-link:active { color: var(--accent); }
-.mobile-menu-sublink {
-  font-size: 16px;
-  font-weight: 500;
-  padding: 8px 0;
-}
+.mobile-menu-sublink { font-size: 16px; font-weight: 500; padding: 8px 0; }
 .mobile-menu-footer {
   padding-top: 24px;
   border-top: 1px solid var(--border);
@@ -580,26 +508,36 @@ body.light .ticker-change.down { color: #f44336; }
 }
 .mobile-menu-social:hover { opacity: 0.7; }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* HOME LAYOUT — 3 columns on desktop                           */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* HOMEPAGE LAYOUT                                               */
+/* Default = mobile (single column block).                       */
+/* Desktop overrides at the bottom in @media (min-width: 769px). */
+/* ════════════════════════════════════════════════════════════ */
 .home-layout {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: grid;
-  grid-template-columns: 240px 1fr 380px;
-  gap: 0;
-  height: calc(100vh - 68px - 33px);
-  overflow: hidden;
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
-.latest-feed {
-  border-right: 1px solid var(--border);
-  padding: 28px 24px 28px 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  height: 100%;
+
+/* By default all three children are visible. We hide left/right
+   on mobile via media query, and hide mobile-only blocks on
+   desktop also via media query. */
+.latest-feed,
+.home-sidebar,
+.center-col {
+  display: block;
 }
+
+/* Center column */
+.center-col {
+  padding: 16px 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Left column — Latest news */
 .feed-header {
   display: flex;
   align-items: center;
@@ -668,17 +606,104 @@ body.light .ticker-change.down { color: #f44336; }
   line-height: 1.7;
 }
 
-.center-col {
-  padding: 28px 0;
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  overflow-x: hidden;
-  height: 100%;
+/* Right column — Sidebar widgets */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+.widget {
+  padding: 0 0 24px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.widget:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.widget-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  display: block;
+}
+.widget-title-link { cursor: pointer; transition: opacity 0.2s; }
+.widget-title-link:hover { opacity: 0.7; }
+.market-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  transition: opacity 0.15s;
+}
+.market-item:last-child { border-bottom: none; }
+.market-item:hover { opacity: 0.7; }
+.market-name {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 15px;
+}
+.market-price {
+  font-family: var(--font-mono);
+  color: var(--text2);
+  font-size: 11px;
+}
+.market-change { font-family: var(--font-mono); font-size: 11px; }
+.up { color: var(--green); }
+.down { color: var(--red); }
+
+.newsletter-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.newsletter-input:focus { border-color: var(--accent); }
+.newsletter-input::placeholder { color: var(--text3); }
+.newsletter-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 11px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  border-radius: 8px;
+}
+.newsletter-btn:hover { opacity: 0.8; }
+.newsletter-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 10px;
+  line-height: 1.5;
 }
 
-/* Filter pills (desktop) */
+/* ════════════════════════════════════════════════════════════ */
+/* FILTERS                                                       */
+/* ════════════════════════════════════════════════════════════ */
+/* Desktop pills */
 .filter-bar {
-  display: flex;
+  display: none; /* Hidden by default (mobile-first); shown on desktop */
   align-items: center;
   margin: 0 0 28px 0;
   padding: 0 12px 20px 36px;
@@ -738,13 +763,12 @@ body.light .ticker-change.down { color: #f44336; }
   opacity: 0; pointer-events: none; visibility: hidden;
 }
 
-/* Filter dropdown (mobile) */
+/* Mobile dropdown filter */
 .filter-bar-mobile {
-  display: none;
-  margin-bottom: 20px;
-  padding: 0;
+  display: flex; /* Visible by default (mobile-first); hidden on desktop */
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 20px;
 }
 .filter-dropdown-label {
   font-family: var(--font-mono);
@@ -784,8 +808,13 @@ body.light .ticker-change.down { color: #f44336; }
   pointer-events: none;
 }
 
-/* ─── Article list (desktop) ─────────────────────────────── */
-.article-list { display: flex; flex-direction: column; }
+/* ════════════════════════════════════════════════════════════ */
+/* ARTICLE LIST — desktop full cards                             */
+/* ════════════════════════════════════════════════════════════ */
+.article-list {
+  display: none; /* Mobile-first; shown on desktop */
+  flex-direction: column;
+}
 .article-item {
   display: block;
   padding: 28px 36px;
@@ -896,9 +925,11 @@ body.light .ticker-change.down { color: #f44336; }
   color: var(--accent);
 }
 
-/* ─── Article list (mobile — hero + compact rows) ────────── */
+/* ════════════════════════════════════════════════════════════ */
+/* ARTICLE LIST — mobile (hero + compact rows)                   */
+/* ════════════════════════════════════════════════════════════ */
 .article-list-mobile {
-  display: none;
+  display: flex; /* Visible by default; hidden on desktop */
   flex-direction: column;
 }
 .mobile-hero-article {
@@ -968,10 +999,7 @@ body.light .ticker-change.down { color: #f44336; }
   flex-wrap: wrap;
   gap: 6px;
 }
-.mobile-article-list {
-  display: flex;
-  flex-direction: column;
-}
+.mobile-article-list { display: flex; flex-direction: column; }
 .mobile-article-row {
   display: flex;
   gap: 12px;
@@ -1034,22 +1062,26 @@ body.light .ticker-change.down { color: #f44336; }
   margin-top: auto;
   letter-spacing: 0.04em;
 }
+
+/* Mobile: bottom-of-feed sidebar wrapper */
 .mobile-sidebar-wrap {
+  display: block; /* Visible on mobile by default; hidden on desktop */
   margin-top: 32px;
   padding-top: 24px;
   border-top: 1px solid var(--border);
 }
-.mobile-sidebar-wrap .sidebar {
-  display: block !important;
-  width: 100%;
-  padding: 0;
-  position: static !important;
-  height: auto !important;
-  overflow: visible !important;
-}
 .mobile-sidebar-wrap .widget { margin-bottom: 20px; }
 
-/* ─── Filter empty state ─────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════ */
+/* DESKTOP-ONLY SIDEBAR WRAPPER (hidden by default = mobile)     */
+/* ════════════════════════════════════════════════════════════ */
+.home-sidebar {
+  display: none; /* Hidden on mobile, shown on desktop */
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* SHARED                                                        */
+/* ════════════════════════════════════════════════════════════ */
 .filter-empty {
   padding: 80px 36px;
   text-align: center;
@@ -1081,7 +1113,6 @@ body.light .ticker-change.down { color: #f44336; }
   color: var(--text3);
   letter-spacing: 0.04em;
 }
-
 .load-more-wrap {
   display: flex;
   flex-direction: column;
@@ -1115,7 +1146,6 @@ body.light .ticker-change.down { color: #f44336; }
   color: var(--text3);
   letter-spacing: 0.04em;
 }
-
 .category-tag {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1133,105 +1163,21 @@ body.light .ticker-change.down { color: #f44336; }
   color: var(--text3);
   letter-spacing: 0.05em;
 }
-
-/* ─── Right sidebar widgets ──────────────────────────────── */
-.sidebar {
+.img-placeholder {
+  background: var(--bg3);
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  height: 100%;
-  padding: 28px 20px 28px 0;
-}
-.widget {
-  padding: 0 0 24px 24px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
-}
-.widget:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-.widget-title {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  display: block;
-}
-.widget-title-link { cursor: pointer; transition: opacity 0.2s; }
-.widget-title-link:hover { opacity: 0.7; }
-.market-item {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  transition: opacity 0.15s;
-}
-.market-item:last-child { border-bottom: none; }
-.market-item:hover { opacity: 0.7; }
-.market-name {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: 15px;
-}
-.market-price {
-  font-family: var(--font-mono);
-  color: var(--text2);
-  font-size: 11px;
-}
-.market-change { font-family: var(--font-mono); font-size: 11px; }
-.up { color: var(--green); }
-.down { color: var(--red); }
-
-.newsletter-input {
-  width: 100%;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.newsletter-input:focus { border-color: var(--accent); }
-.newsletter-input::placeholder { color: var(--text3); }
-.newsletter-btn {
-  width: 100%;
-  background: var(--accent);
-  color: #ffffff;
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 11px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  border-radius: 8px;
-}
-.newsletter-btn:hover { opacity: 0.8; }
-.newsletter-sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
+  justify-content: center;
   color: var(--text3);
-  margin-top: 10px;
-  line-height: 1.5;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  border-radius: 14px;
 }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* ARTICLE PAGE                                                 */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* ARTICLE PAGE                                                  */
+/* ════════════════════════════════════════════════════════════ */
 .article-wrap {
   max-width: 1400px;
   margin: 0 auto;
@@ -1431,9 +1377,9 @@ body.light .ticker-change.down { color: #f44336; }
 .about-socials { margin-bottom: 32px; }
 .footer-logo-col .social-icons { margin-top: 8px; }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* FOOTER                                                       */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* FOOTER                                                        */
+/* ════════════════════════════════════════════════════════════ */
 .site-footer {
   border-top: 1px solid var(--border);
   background: var(--bg);
@@ -1447,11 +1393,7 @@ body.light .ticker-change.down { color: #f44336; }
   gap: 48px;
   padding-bottom: 40px;
 }
-.footer-logo-col {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
+.footer-logo-col { display: flex; flex-direction: column; gap: 14px; }
 .footer-logo-img {
   height: auto;
   width: 180px;
@@ -1509,21 +1451,9 @@ body.light .ticker-change.down { color: #f44336; }
 }
 .footer-legal a:hover { color: var(--accent); }
 
-.img-placeholder {
-  background: var(--bg3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text3);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  border-radius: 14px;
-}
-
-/* ═══════════════════════════════════════════════════════════ */
-/* STATIC PAGES (About / Terms / Privacy / Disclaimer / 404)   */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* STATIC PAGES                                                  */
+/* ════════════════════════════════════════════════════════════ */
 .static-page {
   max-width: 820px;
   margin: 0 auto;
@@ -1575,10 +1505,10 @@ body.light .ticker-change.down { color: #f44336; }
 }
 .static-body strong { color: var(--text); font-weight: 600; }
 .static-lead {
-  font-size: 20px !important;
-  color: var(--text) !important;
-  line-height: 1.6 !important;
-  margin-bottom: 24px !important;
+  font-size: 20px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 24px;
 }
 .static-divider {
   height: 1px;
@@ -1722,9 +1652,9 @@ body.light .ticker-change.down { color: #f44336; }
   flex-wrap: wrap;
 }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* MARKETS PAGES                                                */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* MARKETS PAGES                                                 */
+/* ════════════════════════════════════════════════════════════ */
 .markets-page {
   max-width: 1600px;
   margin: 0 auto;
@@ -1938,7 +1868,7 @@ body.light .ticker-change.down { color: #f44336; }
   letter-spacing: 0.04em;
 }
 
-/* Gainers / Losers hero */
+/* Gainers / Losers */
 .movers-hero { margin-bottom: 28px; }
 .movers-hero-tag {
   display: inline-block;
@@ -2261,9 +2191,9 @@ body.light .ticker-change.down { color: #f44336; }
 .trust-dot.trust-yellow { background: #f0c93a; }
 .trust-dot.trust-red { background: var(--red); }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* COIN DETAIL PAGE                                             */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* COIN DETAIL PAGE                                              */
+/* ════════════════════════════════════════════════════════════ */
 .coin-page {
   max-width: 1400px;
   margin: 0 auto;
@@ -2612,11 +2542,80 @@ body.light .ticker-change.down { color: #f44336; }
 .coin-exchanges-table td { padding: 12px 14px; color: var(--text); }
 .coin-pair { color: var(--text2); }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* RESPONSIVE — TABLETS                                         */
-/* ═══════════════════════════════════════════════════════════ */
-@media (max-width: 1100px) {
-  .home-layout { grid-template-columns: 220px 1fr 300px; }
+/* ════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — DESKTOP (≥ 769px) overrides everything mobile    */
+/* ════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+
+  /* Home: 3-column grid */
+  .home-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr 360px;
+    gap: 0;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    align-items: start;
+  }
+
+  /* Left column (Latest news) — sticky */
+  .latest-feed {
+    position: sticky;
+    top: 92px; /* ticker(~24px) + nav(68px) */
+    max-height: calc(100vh - 92px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px 20px 24px 0;
+    border-right: 1px solid var(--border);
+    box-sizing: border-box;
+  }
+
+  /* Center column — natural height, scrolls with page */
+  .center-col {
+    padding: 24px 0;
+    border-right: 1px solid var(--border);
+    min-width: 0;
+  }
+
+  /* Right column — sticky */
+  .home-sidebar {
+    display: block;
+    position: sticky;
+    top: 92px;
+    max-height: calc(100vh - 92px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px 0 24px 24px;
+    box-sizing: border-box;
+  }
+  .home-sidebar > .sidebar {
+    width: 100%;
+  }
+
+  .latest-feed::-webkit-scrollbar,
+  .home-sidebar::-webkit-scrollbar { width: 3px; }
+  .latest-feed::-webkit-scrollbar-thumb,
+  .home-sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* Filter: show pills, hide dropdown */
+  .filter-bar { display: flex; }
+  .filter-bar-mobile { display: none; }
+
+  /* Articles: show desktop list, hide mobile list */
+  .article-list { display: flex; }
+  .article-list-mobile { display: none; }
+
+  /* Hide bottom-of-feed sidebar on desktop */
+  .mobile-sidebar-wrap { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — TABLETS (≤ 1100px)                               */
+/* ════════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .home-layout {
+    grid-template-columns: 200px 1fr 300px;
+  }
   .footer-main { grid-template-columns: 1fr 1fr 1fr; }
   .footer-logo-col { grid-column: 1 / -1; margin-bottom: 16px; }
   .markets-stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2627,9 +2626,10 @@ body.light .ticker-change.down { color: #f44336; }
   .exchanges-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ═══════════════════════════════════════════════════════════ */
-/* RESPONSIVE — MOBILE (≤ 768px)                                */
-/* ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — MOBILE (≤ 768px) extra adjustments               */
+/* (default styles already mobile-first; this just tightens)     */
+/* ════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
   /* Nav */
@@ -2642,72 +2642,29 @@ body.light .ticker-change.down { color: #f44336; }
   .nav-hamburger { display: flex; }
   .theme-toggle { width: auto; }
 
-  /* Ticker */
-  .ticker { min-height: 28px; padding: 5px 0; }
-  .ticker-item { margin: 0 16px; font-size: 11px; gap: 6px; }
-  .ticker-symbol { font-size: 11px; }
-  .ticker-price { font-size: 11px; }
-  .ticker-change { font-size: 10px; }
-  .ticker-track { animation-duration: 60s; }
-
-  /* Home layout: switch to single column */
-  .home-layout {
-    display: block !important;
-    grid-template-columns: none !important;
-    padding: 0 !important;
-    height: auto !important;
-    overflow: visible !important;
-    max-width: 100%;
-  }
-  .latest-feed {
-    display: none !important;
-  }
-  .center-col {
-    padding: 16px 14px !important;
-    border-right: none !important;
-    overflow: visible !important;
-    height: auto !important;
-    max-width: 100% !important;
-  }
-  .home-layout > .sidebar {
-    display: none !important;
-  }
-
-  /* Filter: hide desktop bar, show mobile dropdown */
-  .filter-bar { display: none !important; }
-  .filter-bar-mobile { display: flex !important; }
-
-  /* Articles: hide desktop list, show mobile list */
-  .article-list { display: none !important; }
-  .article-list-mobile { display: flex !important; }
-
-  /* Load more */
-  .load-more-wrap { padding: 20px 0; border-top: none; }
-  .load-more-btn { width: 100%; }
-
-  /* Empty state */
-  .filter-empty { padding: 60px 20px; }
-  .filter-empty-emoji { width: 70px; height: 70px; }
-  .filter-empty-text { font-size: 24px; }
-
-  /* Article detail page */
+  /* Article detail */
   .article-wrap {
-    display: block !important;
-    grid-template-columns: none !important;
-    padding: 20px 14px !important;
-    gap: 0 !important;
-    height: auto !important;
-    overflow: visible !important;
+    display: block;
+    grid-template-columns: none;
+    padding: 20px 14px;
+    gap: 0;
     max-width: 100%;
   }
-  .article-wrap > .sidebar { display: none !important; }
-  .article-header h1 { font-size: 26px !important; line-height: 1.2 !important; }
+  .article-wrap > .sidebar { display: none; }
+  .article-header h1 { font-size: 26px; line-height: 1.2; }
   .article-header .excerpt { font-size: 15px; padding-left: 14px; }
-  .article-cover { aspect-ratio: 16 / 9; object-fit: cover; width: 100%; max-height: none; }
-  .article-body { font-size: 16px !important; }
+  .article-cover { aspect-ratio: 16 / 9; max-height: none; }
+  .article-body { font-size: 16px; }
   .article-body h2 { font-size: 22px; }
   .article-body h3 { font-size: 18px; }
   .article-top-bar { flex-wrap: wrap; gap: 10px; }
+
+  /* Filter empty state */
+  .filter-empty { padding: 60px 20px; }
+  .filter-empty-emoji { width: 70px; height: 70px; }
+  .filter-empty-text { font-size: 24px; }
+  .load-more-wrap { padding: 20px 0; border-top: none; }
+  .load-more-btn { width: 100%; }
 
   /* Footer */
   .site-footer { padding: 32px 16px 16px; }
@@ -2725,10 +2682,10 @@ body.light .ticker-change.down { color: #f44336; }
   }
 
   /* Static pages */
-  .static-page { padding: 24px 14px 0 !important; }
+  .static-page { padding: 24px 14px 0; }
   .static-title { font-size: 30px; }
   .static-body h2 { font-size: 20px; margin: 28px 0 12px; }
-  .static-lead { font-size: 17px !important; }
+  .static-lead { font-size: 17px; }
   .coming-soon { padding: 48px 14px 32px; }
   .coming-soon-title { font-size: 32px; }
   .coming-soon-desc { font-size: 15px; }
@@ -2737,7 +2694,7 @@ body.light .ticker-change.down { color: #f44336; }
   .notfound-frog { width: 100px; height: 100px; }
 
   /* Markets pages */
-  .markets-page { padding: 20px 14px 0 !important; overflow-x: hidden; }
+  .markets-page { padding: 20px 14px 0; overflow-x: hidden; }
   .markets-hero-title h1 { font-size: 28px; }
   .markets-hero-sub { font-size: 14px; }
   .markets-stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -2763,7 +2720,7 @@ body.light .ticker-change.down { color: #f44336; }
   .exchange-card-img { width: 44px; height: 44px; }
   .exchange-card-name { font-size: 14px; }
 
-  /* Coin detail page */
+  /* Coin detail */
   .coin-page { padding: 20px 14px 0; }
   .coin-header-name { font-size: 26px; }
   .coin-header-img { width: 48px; height: 48px; }
@@ -2778,168 +2735,14 @@ body.light .ticker-change.down { color: #f44336; }
   .coin-chart-types { align-self: stretch; justify-content: center; }
   .chart-type-btn { flex: 1; }
 
-  /* Social icons */
+  /* Social icons larger touch target */
   .social-icons-lg .social-icon-btn { width: 44px; height: 44px; }
   .social-icons-lg .social-icon-btn svg { width: 16px; height: 16px; }
   .article-top-actions { gap: 8px; }
-}
-/* ═══════════════════════════════════════════════════════════ */
-/* PATCH: Desktop scroll fix + mobile duplicate sidebar fix    */
-/* Append to the END of globals.css                             */
-/* ═══════════════════════════════════════════════════════════ */
 
-/* ── Desktop: unlock page scroll ──────────────────────────── */
-/* Previously .home-layout was locked to 100vh with each column
-   scrolling independently. That broke natural page scroll and
-   cut off the footer. Now: the grid flows naturally down the
-   page, and the right sidebar sticks while you scroll. */
-
-@media (min-width: 769px) {
-  .home-layout {
-    height: auto !important;
-    overflow: visible !important;
-    padding-top: 0;
-    padding-bottom: 40px;
-    align-items: start;
-  }
-  .latest-feed {
-    position: sticky;
-    top: 101px; /* ticker(~33px) + nav(68px) */
-    height: calc(100vh - 101px);
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  .center-col {
-    height: auto !important;
-    overflow: visible !important;
-    min-height: calc(100vh - 101px);
-  }
-  .home-sidebar {
-    position: sticky;
-    top: 101px;
-    height: calc(100vh - 101px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 28px 0 28px 24px;
-  }
-  .home-sidebar .sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 0;
-    height: auto;
-    overflow: visible;
-  }
-  /* Scrollbar styling for the two sticky columns */
-  .latest-feed::-webkit-scrollbar,
-  .home-sidebar::-webkit-scrollbar {
-    width: 3px;
-  }
-  .latest-feed::-webkit-scrollbar-thumb,
-  .home-sidebar::-webkit-scrollbar-thumb {
-    background: var(--border2);
-  }
-}
-
-/* ── Mobile: make sure .home-sidebar is fully hidden ──────── */
-/* The .desktop-only class already does this via !important,
-   but defense in depth — explicitly hide the outer sidebar
-   wrapper on mobile so the inline .mobile-sidebar-wrap is
-   the only one that renders. */
-
-@media (max-width: 768px) {
-  .home-sidebar {
-    display: none !important;
-  }
-}
-/* ═══════════════════════════════════════════════════════════ */
-/* PATCH: desktop sidebar restore, ticker height, markets dd    */
-/* Append to the END of globals.css                             */
-/* ═══════════════════════════════════════════════════════════ */
-
-/* ── FIX #1: restore 3-col grid + sidebar on desktop ──────── */
-/* The issue: .desktop-only was applied to .home-sidebar, which
-   collapsed to display:block and the sidebar inside rendered
-   at 0 width. We now force the grid to keep its 3 columns and
-   the sidebar column to be visible with correct flex layout. */
-
-@media (min-width: 769px) {
-  .home-layout {
-    display: grid !important;
-    grid-template-columns: 240px 1fr 380px !important;
-    height: auto !important;
-    overflow: visible !important;
-    align-items: start;
-    padding-bottom: 40px;
-  }
-  .home-layout > .latest-feed,
-  .home-layout > .home-sidebar {
-    display: block !important;
-  }
-  .home-sidebar {
-    position: sticky;
-    top: 101px;
-    max-height: calc(100vh - 101px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 28px 0 28px 24px;
-    box-sizing: border-box;
-  }
-  .home-sidebar > .sidebar {
-    display: flex !important;
-    flex-direction: column;
-    height: auto !important;
-    overflow: visible !important;
-    padding: 0 !important;
-    position: static !important;
-  }
-  .home-sidebar .widget {
-    padding: 0 0 24px 0;
-  }
-  .home-sidebar::-webkit-scrollbar {
-    width: 3px;
-  }
-  .home-sidebar::-webkit-scrollbar-thumb {
-    background: var(--border2);
-  }
-  /* Hide the duplicate mobile sidebar wrapper on desktop */
-  .mobile-sidebar-wrap {
-    display: none !important;
-  }
-}
-
-/* ── FIX #2: ticker slimmer on desktop ────────────────────── */
-@media (min-width: 769px) {
-  .ticker {
-    padding: 4px 0;
-    min-height: 24px;
-  }
-  .ticker-item {
-    font-size: 11px;
-    margin: 0 20px;
-    gap: 6px;
-  }
-  .ticker-symbol,
-  .ticker-price {
-    font-size: 11px;
-  }
-  .ticker-change {
-    font-size: 10px;
-  }
-}
-
-/* ── FIX #3: Markets dropdown — no Quick Search, tighter ──── */
-/* The sidebar nav list is shorter now (no search), so we can
-   use a narrower left column for the Markets dropdown only. */
-
-.mega-inner-tight {
-  grid-template-columns: 160px 1fr !important;
-  padding-top: 22px !important;
-  padding-bottom: 22px !important;
-}
-
-/* Reduce vertical space between nav links in dropdown since
-   there are only 5 links now */
-.mega-inner-tight .mega-sidebar-link {
-  padding: 6px 0;
+  /* Latest news + sidebar already hidden via default rules
+     since .home-sidebar default is display:none and .latest-feed
+     is hidden by being absent on the page (we keep it hidden
+     when not in a grid context). */
+  .latest-feed { display: none; }
 }
