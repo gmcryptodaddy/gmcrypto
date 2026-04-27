@@ -2858,3 +2858,57 @@ body.light .ticker-change.down { color: #f44336; }
     display: none;
   }
 }
+/* ════════════════════════════════════════════════════════════ */
+/* PATCH: Mobile close button, newsfeed time, learn pills        */
+/* Append to END of globals.css                                  */
+/* ════════════════════════════════════════════════════════════ */
+
+/* ── Mobile menu close button ────────────────────────────── */
+.mobile-menu-close-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 0;
+}
+.mobile-menu-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mobile-menu-close:hover,
+.mobile-menu-close:active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── NewsFeed: bigger time font + clearer separation ─────── */
+.newsfeed-item-time {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Add a subtle left accent bar to each news item for visual separation */
+.newsfeed-item {
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+}
+.newsfeed-item:hover {
+  border-left-color: var(--accent);
+}
+
+/* ── Learn page: topic pills spacing ─────────────────────── */
+.learn-preview-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 32px 0 8px;
+}
