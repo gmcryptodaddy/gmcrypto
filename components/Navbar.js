@@ -140,7 +140,7 @@ export default function Navbar() {
           </div>
 
           <div className="nav-item-wrap">
-            <Link href="/category/learn" className="nav-link-item">Learn</Link>
+            <Link href="/learn" className="nav-link-item">Learn</Link>
           </div>
         </div>
 
@@ -158,18 +158,9 @@ export default function Navbar() {
             aria-label="Open menu"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              {mobileOpen ? (
-                <>
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                  <line x1="6" y1="18" x2="18" y2="6" />
-                </>
-              ) : (
-                <>
-                  <line x1="4" y1="7" x2="20" y2="7" />
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="17" x2="20" y2="17" />
-                </>
-              )}
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
             </svg>
           </button>
         </div>
@@ -214,7 +205,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Markets dropdown — no Quick Search, tighter */}
+      {/* Markets dropdown */}
       <div
         className={`mega-dropdown ${openDropdown === 'markets' ? 'mega-open' : ''}`}
         onMouseEnter={() => handleEnter('markets')}
@@ -258,14 +249,27 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile overlay menu */}
+      {/* Mobile overlay menu — with close button */}
       <div className={`mobile-menu ${mobileOpen ? 'mobile-menu-open' : ''}`}>
+        <div className="mobile-menu-close-bar">
+          <button
+            className="mobile-menu-close"
+            onClick={closeMobile}
+            aria-label="Close menu"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="6" y1="18" x2="18" y2="6" />
+            </svg>
+          </button>
+        </div>
+
         <div className="mobile-menu-inner">
           <div className="mobile-menu-section">
             <div className="mobile-menu-heading">Browse</div>
             <Link href="/" className="mobile-menu-link" onClick={closeMobile}>All News</Link>
             <Link href="/markets" className="mobile-menu-link" onClick={closeMobile}>Markets</Link>
-            <Link href="/category/learn" className="mobile-menu-link" onClick={closeMobile}>Learn</Link>
+            <Link href="/learn" className="mobile-menu-link" onClick={closeMobile}>Learn</Link>
           </div>
 
           <div className="mobile-menu-section">
@@ -292,7 +296,7 @@ export default function Navbar() {
           </div>
 
           <div className="mobile-menu-footer">
-            <a href="https://twitter.com/gm_cryptonews" target="_blank" rel="noopener noreferrer" className="mobile-menu-social">
+            <a href="https://x.com/gm_cryptonews" target="_blank" rel="noopener noreferrer" className="mobile-menu-social">
               Follow @gm_cryptonews →
             </a>
           </div>
