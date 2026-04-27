@@ -5,9 +5,11 @@ import Navbar from '../components/Navbar'
 import Ticker from '../components/Ticker'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import NewsFeed from '../components/NewsFeed'
 import { client, urlFor } from '../lib/sanity'
 import { allPostsQuery } from '../lib/queries'
 import { generateHashtags } from '../lib/hashtags'
+import { getTelegramFeed } from '../lib/telegram'
 
 function timeAgo(dateStr) {
   if (!dateStr) return 'recently'
@@ -32,7 +34,7 @@ const FILTERS = [
 
 const POSTS_PER_PAGE = 10
 
-export default function Home({ posts }) {
+export default function Home({ posts, telegramPosts }) {
   const allPosts = posts || []
   const [activeFilter, setActiveFilter] = useState('All')
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
@@ -113,7 +115,7 @@ export default function Home({ posts }) {
       <Navbar />
 
       <div className="home-layout">
-        {/* LEFT: Latest news (desktop only via CSS) */}
+        {/* LEFT: Latest news */}
         <aside className="latest-feed">
           <div className="feed-header">
             <span className="feed-dot" />
@@ -140,6 +142,10 @@ export default function Home({ posts }) {
 
         {/* CENTER: Main feed */}
         <main className="center-col">
+          {/* News wire from Telegram — above filters */}
+          <NewsFeed posts={telegramPosts} />
+
+          {/* Desktop filter pills */}
           <div className="filter-bar">
             <button
               className="filter-arrow"
@@ -176,6 +182,7 @@ export default function Home({ posts }) {
             </button>
           </div>
 
+          {/* Mobile dropdown filter */}
           <div className="filter-bar-mobile">
             <label className="filter-dropdown-label">Category</label>
             <div className="filter-dropdown-wrap">
@@ -365,13 +372,13 @@ export default function Home({ posts }) {
             </div>
           )}
 
-          {/* Mobile-only: sidebar widgets at bottom of feed */}
+          {/* Mobile-only sidebar widgets at bottom */}
           <div className="mobile-sidebar-wrap">
             <Sidebar />
           </div>
         </main>
 
-        {/* RIGHT: Sidebar (desktop only via CSS) */}
+        {/* RIGHT: Sidebar */}
         <aside className="home-sidebar">
           <Sidebar />
         </aside>
@@ -384,14 +391,21 @@ export default function Home({ posts }) {
 
 export async function getStaticProps() {
   try {
-    const posts = await client.fetch(allPostsQuery)
+    const [posts, telegramPosts] = await Promise.all([
+      client.fetch(allPostsQuery),
+      getTelegramFeed(),
+    ])
     return {
-      props: { posts: posts || [] },
-      revalidate: 60,
+      props: {
+        posts: posts || [],
+        telegramPosts: telegramPosts || [],
+      },
+      revalidate: 300, // 5 minutes
     }
   } catch (error) {
+    console.error('Homepage data error:', error)
     return {
-      props: { posts: [] },
+      props: { posts: [], telegramPosts: [] },
       revalidate: 60,
     }
   }
