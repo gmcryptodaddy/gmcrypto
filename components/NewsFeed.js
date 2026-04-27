@@ -23,11 +23,11 @@ export default function NewsFeed({ posts }) {
 
       <div className="newsfeed-list">
         {posts.map((post) => {
-          // Truncate to first 2 lines (~200 chars)
+          // Show full text but cap at ~250 chars
           const lines = post.text.split('\n').filter(l => l.trim())
-          const preview = lines.slice(0, 2).join(' · ')
-          const truncated = preview.length > 200
-            ? preview.slice(0, 200).trim() + '…'
+          const preview = lines.join(' · ')
+          const truncated = preview.length > 250
+            ? preview.slice(0, 250).trim() + '…'
             : preview
 
           return (
