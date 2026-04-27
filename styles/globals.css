@@ -2746,3 +2746,115 @@ body.light .ticker-change.down { color: #f44336; }
      when not in a grid context). */
   .latest-feed { display: none; }
 }
+/* ════════════════════════════════════════════════════════════ */
+/* NEWS FEED — Telegram wire above article filters               */
+/* Append to the END of globals.css                              */
+/* ════════════════════════════════════════════════════════════ */
+
+.newsfeed {
+  margin: 0 36px 24px;
+  padding: 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.newsfeed-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.newsfeed-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+
+.newsfeed-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.newsfeed-follow {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.newsfeed-follow:hover {
+  color: var(--accent);
+}
+
+.newsfeed-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.newsfeed-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  transition: opacity 0.15s;
+}
+.newsfeed-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.newsfeed-item:first-child {
+  padding-top: 0;
+}
+.newsfeed-item:hover {
+  opacity: 0.7;
+}
+
+.newsfeed-item-text {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.newsfeed-item-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .newsfeed {
+    margin: 0 0 20px;
+    padding: 16px;
+    border-radius: 10px;
+  }
+  .newsfeed-item-text {
+    font-size: 12px;
+  }
+  .newsfeed-follow {
+    display: none;
+  }
+}
