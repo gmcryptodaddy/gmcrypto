@@ -3,11 +3,11 @@ import { useState, useEffect, useRef } from 'react'
 import { client, urlFor } from '../lib/sanity'
 
 const NEWS_CATEGORIES = [
-  { label: 'Breaking News', href: '/category/breaking-news' },
-  { label: 'Policy', href: '/category/policy' },
-  { label: 'Tech', href: '/category/tech' },
-  { label: 'DeFi', href: '/category/defi' },
-  { label: 'TradFi', href: '/category/tradfi' },
+  { label: 'Breaking News', href: '/?category=Breaking%20News' },
+  { label: 'Policy', href: '/?category=Policy' },
+  { label: 'Tech', href: '/?category=Tech' },
+  { label: 'DeFi', href: '/?category=DeFi' },
+  { label: 'TradFi', href: '/?category=TradFi' },
 ]
 
 const MARKETS_LINKS = [
