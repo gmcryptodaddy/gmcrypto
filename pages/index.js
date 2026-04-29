@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
@@ -36,6 +37,8 @@ const POSTS_PER_PAGE = 10
 
 export default function Home({ posts, telegramPosts }) {
   const allPosts = posts || []
+  const router = useRouter()
+
   const [activeFilter, setActiveFilter] = useState('All')
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
   const scrollRef = useRef(null)
@@ -43,6 +46,18 @@ export default function Home({ posts, telegramPosts }) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
+  // Sync filter with ?category= URL param (initial load + browser back/forward)
+  useEffect(() => {
+    if (!router.isReady) return
+    const queryCat = router.query.category
+    if (typeof queryCat === 'string' && queryCat.trim()) {
+      setActiveFilter(queryCat)
+    } else {
+      setActiveFilter('All')
+    }
+  }, [router.isReady, router.query.category])
+
+  // Reset pagination when filter changes
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
   }, [activeFilter])
@@ -62,6 +77,16 @@ export default function Home({ posts, telegramPosts }) {
       window.removeEventListener('resize', handleScroll)
     }
   }, [])
+
+  // Update filter + URL together. Shallow routing keeps the page mounted (no refetch).
+  const updateFilter = (newFilter) => {
+    setActiveFilter(newFilter)
+    if (newFilter === 'All') {
+      router.push('/', undefined, { shallow: true, scroll: false })
+    } else {
+      router.push(`/?category=${encodeURIComponent(newFilter)}`, undefined, { shallow: true, scroll: false })
+    }
+  }
 
   const filteredPosts = activeFilter === 'All'
     ? allPosts
@@ -89,14 +114,23 @@ export default function Home({ posts, telegramPosts }) {
   const heroPost = visiblePosts[0] || null
   const restPosts = visiblePosts.slice(1)
 
+  // SEO: dynamic title/description when a category is active
+  const isCategoryView = activeFilter !== 'All'
+  const pageTitle = isCategoryView
+    ? `${activeFilter} — GM Crypto News`
+    : 'GM Crypto News'
+  const pageDescription = isCategoryView
+    ? `Latest ${activeFilter} news, analysis, and updates on GM Crypto News. No hype. Just signal.`
+    : 'Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal.'
+
   return (
     <>
       <Head>
-        <title>GM Crypto News</title>
-        <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
 
-        <meta property="og:title" content="GM Crypto News" />
-        <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
         <meta property="og:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
@@ -105,8 +139,8 @@ export default function Home({ posts, telegramPosts }) {
         <meta property="og:site_name" content="GM Crypto News" />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="GM Crypto News" />
-        <meta name="twitter:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
         <meta name="twitter:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
@@ -162,12 +196,21 @@ export default function Home({ posts, telegramPosts }) {
                 {FILTERS.map(f => (
                   <button
                     key={f}
-                    onClick={() => setActiveFilter(f)}
+                    onClick={() => updateFilter(f)}
                     className={`filter-pill ${activeFilter === f ? 'filter-pill-active' : ''}`}
                   >
                     {f}
                   </button>
                 ))}
+                {/* Show active filter as a pill if it's not in the default FILTERS list (e.g. from footer link) */}
+                {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
+                  <button
+                    onClick={() => updateFilter(activeFilter)}
+                    className="filter-pill filter-pill-active"
+                  >
+                    {activeFilter}
+                  </button>
+                )}
               </div>
             </div>
             <button
@@ -188,12 +231,16 @@ export default function Home({ posts, telegramPosts }) {
             <div className="filter-dropdown-wrap">
               <select
                 className="filter-dropdown"
-                value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value)}
+                value={FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) ? activeFilter : 'All'}
+                onChange={(e) => updateFilter(e.target.value)}
               >
                 {FILTERS.map(f => (
                   <option key={f} value={f}>{f}</option>
                 ))}
+                {/* Show active filter in dropdown if it's not in default FILTERS list */}
+                {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
+                  <option value={activeFilter}>{activeFilter}</option>
+                )}
               </select>
               <svg className="filter-dropdown-caret" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
