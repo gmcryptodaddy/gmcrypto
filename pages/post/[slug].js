@@ -113,7 +113,7 @@ export default function PostPage({ post }) {
                 <span style={{ color: 'var(--text3)' }}>/</span>
                 {post.category && (
                   <>
-                    <Link href={`/category/${post.category.toLowerCase()}`} style={{ fontSize: 12, color: 'var(--text3)' }}>{post.category}</Link>
+                    <Link href={`/?category=${encodeURIComponent(post.category)}`} style={{ fontSize: 12, color: 'var(--text3)' }}>{post.category}</Link>
                     <span style={{ color: 'var(--text3)' }}>/</span>
                   </>
                 )}
