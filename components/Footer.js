@@ -21,21 +21,21 @@ export default function Footer() {
 
         <div className="footer-col">
           <h4>Products</h4>
-          <Link href="/category/news">News</Link>
-          <Link href="/category/learn">Learn</Link>
+          <Link href="/?category=News">News</Link>
+          <Link href="/learn">Learn</Link>
           <Link href="/markets">Markets</Link>
         </div>
 
         <div className="footer-col">
           <h4>Crypto News</h4>
-          <Link href="/category/xrp">XRP News</Link>
-          <Link href="/category/bitcoin">Bitcoin News</Link>
-          <Link href="/category/ethereum">Ethereum News</Link>
-          <Link href="/category/policy">US Crypto News</Link>
-          <Link href="/category/dogecoin">Dogecoin News</Link>
-          <Link href="/category/solana">Solana News</Link>
-          <Link href="/category/meme-coins">Meme Coin News</Link>
-          <Link href="/category/etf">ETF News</Link>
+          <Link href="/?category=XRP%20News">XRP News</Link>
+          <Link href="/?category=Bitcoin%20News">Bitcoin News</Link>
+          <Link href="/?category=Ethereum%20News">Ethereum News</Link>
+          <Link href="/?category=US%20Crypto%20News">US Crypto News</Link>
+          <Link href="/?category=Dogecoin%20News">Dogecoin News</Link>
+          <Link href="/?category=Solana%20News">Solana News</Link>
+          <Link href="/?category=Meme%20Coin%20News">Meme Coin News</Link>
+          <Link href="/?category=ETF%20News">ETF News</Link>
         </div>
       </div>
 
