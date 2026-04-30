@@ -2,11 +2,10 @@
 // In-feed compact chart embed (BeInCrypto-style). Shown after the 3rd article
 // in the homepage feed. Hidden on mobile.
 //
-// Coin pills (BTC/ETH/SOL) load summary prices from CoinGecko once on mount.
-// Selecting a pill swaps the active chart. Time-range buttons (24H/7D/30D/1Y/All)
-// refetch the chart for the selected coin.
+// Calls go through /api/coingecko-* proxies which cache responses for 60s
+// and avoid CORS / rate-limit issues from the browser.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createChart, ColorType } from 'lightweight-charts'
 
@@ -39,24 +38,23 @@ export default function AnalysisEmbed() {
 
   const [activeCoinId, setActiveCoinId] = useState('bitcoin')
   const [days, setDays] = useState(1)
-  const [coinData, setCoinData] = useState({}) // { bitcoin: {price, change, image}, ... }
+  const [coinData, setCoinData] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const activeCoin = COINS.find(c => c.id === activeCoinId)
   const activeData = coinData[activeCoinId] || {}
   const isUp = (activeData.change ?? 0) >= 0
   const changeColor = isUp ? '#4caf50' : '#f44336'
 
-  // Load coin summary data (price, 24h change, image) for all 3 pills once
+  // Load summary data via server proxy
   useEffect(() => {
     let cancelled = false
     async function loadSummary() {
       try {
-        const ids = COINS.map(c => c.id).join(',')
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`
-        )
+        const res = await fetch('/api/coingecko-summary')
+        if (!res.ok) throw new Error('Summary unavailable')
         const data = await res.json()
         if (cancelled) return
         const map = {}
@@ -100,18 +98,13 @@ export default function AnalysisEmbed() {
         timeVisible: true,
         secondsVisible: false,
       },
-      rightPriceScale: {
-        borderColor: 'transparent',
-      },
-      crosshair: {
-        mode: 1,
-      },
+      rightPriceScale: { borderColor: 'transparent' },
+      crosshair: { mode: 1 },
       handleScroll: false,
       handleScale: false,
       width: containerRef.current.clientWidth,
       height: 320,
     })
-
     chartRef.current = chart
 
     const handleResize = () => {
@@ -129,17 +122,13 @@ export default function AnalysisEmbed() {
     }
   }, [])
 
-  // Recreate area series when coin changes (color reflects up/down)
+  // Recreate area series when coin or direction changes
   useEffect(() => {
     if (!chartRef.current) return
-
     if (seriesRef.current) {
-      try {
-        chartRef.current.removeSeries(seriesRef.current)
-      } catch (e) { /* ignore */ }
+      try { chartRef.current.removeSeries(seriesRef.current) } catch (e) {}
       seriesRef.current = null
     }
-
     const lineColor = isUp ? '#4caf50' : '#f44336'
     seriesRef.current = chartRef.current.addAreaSeries({
       lineColor: lineColor,
@@ -150,56 +139,61 @@ export default function AnalysisEmbed() {
     })
   }, [activeCoinId, isUp])
 
-  // Fetch chart data when coin or range changes
-  useEffect(() => {
+  // Fetch chart data via server proxy
+  const fetchChart = useCallback(async (signal) => {
     if (!seriesRef.current) return
 
     const requestId = ++latestRequestId.current
-    const abortController = new AbortController()
     setLoading(true)
     setError(null)
 
-    async function fetchChart() {
-      try {
-        const url = `https://api.coingecko.com/api/v3/coins/${activeCoinId}/market_chart?vs_currency=usd&days=${days}`
-        const res = await fetch(url, { signal: abortController.signal })
-        if (requestId !== latestRequestId.current) return
-        if (!res.ok) {
-          if (res.status === 429) throw new Error('Rate limited. Please wait a moment.')
-          throw new Error(`Chart unavailable (${res.status})`)
-        }
-        const json = await res.json()
-        if (requestId !== latestRequestId.current) return
+    try {
+      const url = `/api/coingecko-chart?coin=${activeCoinId}&days=${days}`
+      const res = await fetch(url, { signal })
+      if (requestId !== latestRequestId.current) return
 
-        const points = (json.prices || []).map(([time, value]) => ({
-          time: Math.floor(time / 1000),
-          value,
-        }))
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        if (res.status === 429) throw new Error('Rate limited — try again in a moment')
+        throw new Error(errBody.error || `Chart unavailable (${res.status})`)
+      }
 
-        if (points.length === 0) throw new Error('No data available')
+      const json = await res.json()
+      if (requestId !== latestRequestId.current) return
 
-        const seen = new Set()
-        const cleaned = points
-          .filter(p => { if (seen.has(p.time)) return false; seen.add(p.time); return true })
-          .sort((a, b) => a.time - b.time)
+      const points = (json.prices || []).map(([time, value]) => ({
+        time: Math.floor(time / 1000),
+        value,
+      }))
 
-        if (seriesRef.current && requestId === latestRequestId.current) {
-          seriesRef.current.setData(cleaned)
-          chartRef.current?.timeScale().fitContent()
-          setLoading(false)
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') return
-        if (requestId !== latestRequestId.current) return
-        console.error('AnalysisEmbed chart error:', err)
-        setError(err.message || 'Failed to load chart')
+      if (points.length === 0) throw new Error('No data available')
+
+      const seen = new Set()
+      const cleaned = points
+        .filter(p => { if (seen.has(p.time)) return false; seen.add(p.time); return true })
+        .sort((a, b) => a.time - b.time)
+
+      if (seriesRef.current && requestId === latestRequestId.current) {
+        seriesRef.current.setData(cleaned)
+        chartRef.current?.timeScale().fitContent()
         setLoading(false)
       }
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      if (requestId !== latestRequestId.current) return
+      console.error('AnalysisEmbed chart error:', err)
+      setError(err.message || 'Failed to load chart')
+      setLoading(false)
     }
-
-    fetchChart()
-    return () => abortController.abort()
   }, [activeCoinId, days])
+
+  useEffect(() => {
+    const ac = new AbortController()
+    fetchChart(ac.signal)
+    return () => ac.abort()
+  }, [fetchChart, retryCount])
+
+  const handleRetry = () => setRetryCount(c => c + 1)
 
   return (
     <div className="analysis-embed">
@@ -210,7 +204,6 @@ export default function AnalysisEmbed() {
         </Link>
       </div>
 
-      {/* Coin selector pills */}
       <div className="analysis-embed-pills">
         {COINS.map(coin => {
           const d = coinData[coin.id] || {}
@@ -236,7 +229,6 @@ export default function AnalysisEmbed() {
         })}
       </div>
 
-      {/* Chart panel with overlay */}
       <div className="analysis-embed-chart-wrap">
         <div className="analysis-embed-overlay">
           <div className="analysis-embed-overlay-row">
@@ -259,11 +251,17 @@ export default function AnalysisEmbed() {
 
         <div className="analysis-embed-chart" ref={containerRef}>
           {loading && <div className="analysis-embed-loading">Loading chart…</div>}
-          {error && !loading && <div className="analysis-embed-error">{error}</div>}
+          {error && !loading && (
+            <div className="analysis-embed-error-wrap">
+              <div className="analysis-embed-error">{error}</div>
+              <button className="analysis-embed-retry" onClick={handleRetry}>
+                Retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Time range buttons */}
       <div className="analysis-embed-ranges">
         {RANGES.map(r => (
           <button
