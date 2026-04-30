@@ -2,8 +2,11 @@
 // In-feed compact chart embed (BeInCrypto-style). Shown after the 3rd article
 // in the homepage feed. Hidden on mobile.
 //
-// Calls go through /api/coingecko-* proxies which cache responses for 60s
-// and avoid CORS / rate-limit issues from the browser.
+// Performance:
+//  - Calls go through /api/coingecko-* proxies (server-side cache + edge cache)
+//  - Prefetches all 3 coins for the default range on mount, so swapping
+//    coins is instant for the user
+//  - Dedupes in-flight requests so spamming pills/ranges doesn't make N calls
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
@@ -35,6 +38,9 @@ export default function AnalysisEmbed() {
   const chartRef = useRef(null)
   const seriesRef = useRef(null)
   const latestRequestId = useRef(0)
+  // Browser-side cache so swapping back to a previously-viewed coin/range is instant
+  const localCacheRef = useRef(new Map()) // key -> { prices: [[time, value], ...] }
+  const inFlightRef = useRef(new Map())   // key -> Promise (for dedupe)
 
   const [activeCoinId, setActiveCoinId] = useState('bitcoin')
   const [days, setDays] = useState(1)
@@ -48,12 +54,49 @@ export default function AnalysisEmbed() {
   const isUp = (activeData.change ?? 0) >= 0
   const changeColor = isUp ? '#4caf50' : '#f44336'
 
-  // Load summary data via server proxy
+  // Helper: fetch chart data with dedupe + browser cache
+  const fetchChartData = useCallback(async (coin, daysVal, signal) => {
+    const key = `${coin}:${daysVal}`
+
+    // Browser cache hit
+    if (localCacheRef.current.has(key)) {
+      return localCacheRef.current.get(key)
+    }
+
+    // Dedupe: if this exact request is in flight, await the existing promise
+    if (inFlightRef.current.has(key)) {
+      return inFlightRef.current.get(key)
+    }
+
+    const promise = (async () => {
+      const res = await fetch(`/api/coingecko-chart?coin=${coin}&days=${daysVal}`, { signal })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        if (res.status === 429) throw new Error('Rate limited — try again in a moment')
+        throw new Error(errBody.error || `Chart unavailable (${res.status})`)
+      }
+      const json = await res.json()
+      localCacheRef.current.set(key, json)
+      return json
+    })()
+
+    inFlightRef.current.set(key, promise)
+    try {
+      return await promise
+    } finally {
+      inFlightRef.current.delete(key)
+    }
+  }, [])
+
+  // Load summary data via server proxy + prefetch all 3 charts at default range
   useEffect(() => {
     let cancelled = false
-    async function loadSummary() {
+    const ac = new AbortController()
+
+    async function loadAll() {
+      // Summary first (cheap, single call)
       try {
-        const res = await fetch('/api/coingecko-summary')
+        const res = await fetch('/api/coingecko-summary', { signal: ac.signal })
         if (!res.ok) throw new Error('Summary unavailable')
         const data = await res.json()
         if (cancelled) return
@@ -67,12 +110,23 @@ export default function AnalysisEmbed() {
         }
         setCoinData(map)
       } catch (err) {
-        console.error('AnalysisEmbed summary error:', err)
+        if (err.name !== 'AbortError') console.error('Summary error:', err)
       }
+
+      // Prefetch ETH and SOL for 24H so pill switching is instant.
+      // BTC at 24H is fetched by the main chart effect, so skip.
+      // Fire-and-forget — failures are silent (main chart is what matters).
+      const prefetchKey = (coin) => `${coin}:1`
+      ;['ethereum', 'solana'].forEach(coin => {
+        if (!localCacheRef.current.has(prefetchKey(coin))) {
+          fetchChartData(coin, 1, ac.signal).catch(() => {})
+        }
+      })
     }
-    loadSummary()
-    return () => { cancelled = true }
-  }, [])
+
+    loadAll()
+    return () => { cancelled = true; ac.abort() }
+  }, [fetchChartData])
 
   // Initialize chart once
   useEffect(() => {
@@ -139,61 +193,51 @@ export default function AnalysisEmbed() {
     })
   }, [activeCoinId, isUp])
 
-  // Fetch chart data via server proxy
-  const fetchChart = useCallback(async (signal) => {
+  // Fetch + render chart data when coin/range/retry changes
+  useEffect(() => {
     if (!seriesRef.current) return
-
     const requestId = ++latestRequestId.current
+    const ac = new AbortController()
     setLoading(true)
     setError(null)
 
-    try {
-      const url = `/api/coingecko-chart?coin=${activeCoinId}&days=${days}`
-      const res = await fetch(url, { signal })
-      if (requestId !== latestRequestId.current) return
+    fetchChartData(activeCoinId, days, ac.signal)
+      .then(json => {
+        if (requestId !== latestRequestId.current) return
+        const points = (json.prices || []).map(([time, value]) => ({
+          time: Math.floor(time / 1000),
+          value,
+        }))
+        if (points.length === 0) throw new Error('No data available')
 
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        if (res.status === 429) throw new Error('Rate limited — try again in a moment')
-        throw new Error(errBody.error || `Chart unavailable (${res.status})`)
-      }
+        const seen = new Set()
+        const cleaned = points
+          .filter(p => { if (seen.has(p.time)) return false; seen.add(p.time); return true })
+          .sort((a, b) => a.time - b.time)
 
-      const json = await res.json()
-      if (requestId !== latestRequestId.current) return
-
-      const points = (json.prices || []).map(([time, value]) => ({
-        time: Math.floor(time / 1000),
-        value,
-      }))
-
-      if (points.length === 0) throw new Error('No data available')
-
-      const seen = new Set()
-      const cleaned = points
-        .filter(p => { if (seen.has(p.time)) return false; seen.add(p.time); return true })
-        .sort((a, b) => a.time - b.time)
-
-      if (seriesRef.current && requestId === latestRequestId.current) {
-        seriesRef.current.setData(cleaned)
-        chartRef.current?.timeScale().fitContent()
+        if (seriesRef.current && requestId === latestRequestId.current) {
+          seriesRef.current.setData(cleaned)
+          chartRef.current?.timeScale().fitContent()
+          setLoading(false)
+        }
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        if (requestId !== latestRequestId.current) return
+        console.error('AnalysisEmbed chart error:', err)
+        setError(err.message || 'Failed to load chart')
         setLoading(false)
-      }
-    } catch (err) {
-      if (err.name === 'AbortError') return
-      if (requestId !== latestRequestId.current) return
-      console.error('AnalysisEmbed chart error:', err)
-      setError(err.message || 'Failed to load chart')
-      setLoading(false)
-    }
-  }, [activeCoinId, days])
+      })
 
-  useEffect(() => {
-    const ac = new AbortController()
-    fetchChart(ac.signal)
     return () => ac.abort()
-  }, [fetchChart, retryCount])
+  }, [activeCoinId, days, retryCount, fetchChartData])
 
-  const handleRetry = () => setRetryCount(c => c + 1)
+  const handleRetry = () => {
+    // Bust the browser cache for this key on retry
+    const key = `${activeCoinId}:${days}`
+    localCacheRef.current.delete(key)
+    setRetryCount(c => c + 1)
+  }
 
   return (
     <div className="analysis-embed">
