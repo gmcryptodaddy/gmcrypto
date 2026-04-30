@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Sparkline from './Sparkline'
 
 const COIN_IDS = [
   'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
@@ -24,7 +25,7 @@ export default function Sidebar() {
     async function fetchPrices() {
       try {
         const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COIN_IDS.join(',')}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`
+          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COIN_IDS.join(',')}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
         )
         const data = await res.json()
         setCoins(data)
@@ -62,14 +63,17 @@ export default function Sidebar() {
             {coins.map(coin => {
               const change = coin.price_change_percentage_24h
               const up = change >= 0
+              // CoinGecko 7d sparkline gives ~168 points; trim to last ~24h (~24 points)
+              const sparkData = coin.sparkline_in_7d?.price || []
+              const last24h = sparkData.slice(-24)
               return (
                 <Link key={coin.id} href={`/markets/${coin.id}`} className="market-item">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="market-item-left">
                     {coin.image && (
                       <img
                         src={coin.image}
                         alt={coin.name}
-                        style={{ width: 20, height: 20, borderRadius: '50%' }}
+                        className="market-coin-img"
                       />
                     )}
                     <div>
@@ -77,8 +81,15 @@ export default function Sidebar() {
                       <div className="market-price">{coin.name}</div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+
+                  {last24h.length > 0 && (
+                    <div className="market-spark">
+                      <Sparkline data={last24h} positive={up} width={56} height={22} />
+                    </div>
+                  )}
+
+                  <div className="market-item-right">
+                    <div className="market-item-value">
                       {formatPrice(coin.current_price)}
                     </div>
                     <div className={`market-change ${up ? 'up' : 'down'}`}>
