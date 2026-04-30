@@ -7,6 +7,9 @@
 //  - Prefetches all 3 coins for the default range on mount, so swapping
 //    coins is instant for the user
 //  - Dedupes in-flight requests so spamming pills/ranges doesn't make N calls
+//
+// Ranges: 24H/7D/30D/1Y. ('All' was dropped — CoinGecko Demo API restricts
+// historical data to the past 365 days only.)
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
@@ -23,7 +26,6 @@ const RANGES = [
   { label: '7D',  days: 7 },
   { label: '30D', days: 30 },
   { label: '1Y',  days: 365 },
-  { label: 'All', days: 'max' },
 ]
 
 function formatPrice(price) {
@@ -58,12 +60,10 @@ export default function AnalysisEmbed() {
   const fetchChartData = useCallback(async (coin, daysVal, signal) => {
     const key = `${coin}:${daysVal}`
 
-    // Browser cache hit
     if (localCacheRef.current.has(key)) {
       return localCacheRef.current.get(key)
     }
 
-    // Dedupe: if this exact request is in flight, await the existing promise
     if (inFlightRef.current.has(key)) {
       return inFlightRef.current.get(key)
     }
@@ -88,13 +88,12 @@ export default function AnalysisEmbed() {
     }
   }, [])
 
-  // Load summary data via server proxy + prefetch all 3 charts at default range
+  // Load summary + prefetch ETH/SOL at default range
   useEffect(() => {
     let cancelled = false
     const ac = new AbortController()
 
     async function loadAll() {
-      // Summary first (cheap, single call)
       try {
         const res = await fetch('/api/coingecko-summary', { signal: ac.signal })
         if (!res.ok) throw new Error('Summary unavailable')
@@ -113,12 +112,9 @@ export default function AnalysisEmbed() {
         if (err.name !== 'AbortError') console.error('Summary error:', err)
       }
 
-      // Prefetch ETH and SOL for 24H so pill switching is instant.
-      // BTC at 24H is fetched by the main chart effect, so skip.
-      // Fire-and-forget — failures are silent (main chart is what matters).
-      const prefetchKey = (coin) => `${coin}:1`
       ;['ethereum', 'solana'].forEach(coin => {
-        if (!localCacheRef.current.has(prefetchKey(coin))) {
+        const key = `${coin}:1`
+        if (!localCacheRef.current.has(key)) {
           fetchChartData(coin, 1, ac.signal).catch(() => {})
         }
       })
@@ -233,7 +229,6 @@ export default function AnalysisEmbed() {
   }, [activeCoinId, days, retryCount, fetchChartData])
 
   const handleRetry = () => {
-    // Bust the browser cache for this key on retry
     const key = `${activeCoinId}:${days}`
     localCacheRef.current.delete(key)
     setRetryCount(c => c + 1)
@@ -288,7 +283,7 @@ export default function AnalysisEmbed() {
           <div className="analysis-embed-overlay-change" style={{ color: changeColor }}>
             {isUp ? '▲' : '▼'} {Math.abs(activeData.change ?? 0).toFixed(2)}%
             <span className="analysis-embed-overlay-period">
-              {days === 1 ? 'for 24 hours' : days === 7 ? 'for 7 days' : days === 30 ? 'for 30 days' : days === 365 ? 'for 1 year' : 'all time'}
+              {days === 1 ? 'for 24 hours' : days === 7 ? 'for 7 days' : days === 30 ? 'for 30 days' : 'for 1 year'}
             </span>
           </div>
         </div>
