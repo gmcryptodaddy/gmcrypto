@@ -2912,3 +2912,71 @@ body.light .ticker-change.down { color: #f44336; }
   justify-content: center;
   margin: 32px 0 8px;
 }
+/* ============================================================
+   CONVERTER — fix desktop: select was eating all the row width,
+   squeezing the amount input to ~30px. Lock select to 220px,
+   give input a real min-width.
+   ============================================================ */
+.converter-amount-input {
+  min-width: 140px;
+}
+.converter-select {
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+/* ============================================================
+   SIDEBAR — Live Markets / GM Newsletter title weight to match
+   "Latest news" and "NEWS FEED". Old: 13px / no weight / 0.18em.
+   New: 13px / 700 / 0.14em — same vibe as .newsfeed-title.
+   ============================================================ */
+.widget-title {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+/* ============================================================
+   SIDEBAR — Tighter market row + 24h sparkline.
+   New layout: [icon + name] [sparkline] [price + change]
+   Pulls price values closer to the middle (away from the right
+   edge) and adds visual context for each coin.
+   ============================================================ */
+.market-item {
+  /* keep flex but explicitly distribute the 3 children */
+  gap: 10px;
+}
+.market-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.market-coin-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.market-spark {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+.market-item-right {
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 64px;
+}
+.market-item-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* On narrow sidebars, hide the sparkline so price stays readable */
+@media (max-width: 380px) {
+  .market-spark { display: none; }
+}
