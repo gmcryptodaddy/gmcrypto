@@ -1,14 +1,19 @@
 // components/CoinChart.js
-import { useEffect, useRef, useState } from 'react'
+// Chart component for /markets/[coin] pages.
+// Calls go through /api/coingecko-chart proxy (server-side cache + API key).
+//
+// Ranges: 24h/7d/30d/90d/1y. ('All' was dropped — CoinGecko Demo API
+// restricts historical data to the past 365 days only.)
+
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createChart, ColorType } from 'lightweight-charts'
 
 const RANGES = [
   { label: '24h', days: 1 },
-  { label: '7d', days: 7 },
+  { label: '7d',  days: 7 },
   { label: '30d', days: 30 },
   { label: '90d', days: 90 },
-  { label: '1y', days: 365 },
-  { label: 'All', days: 'max' },
+  { label: '1y',  days: 365 },
 ]
 
 export default function CoinChart({ coinId, color = '#FF6B00' }) {
@@ -20,6 +25,34 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
   const [chartType, setChartType] = useState('area') // 'area' or 'candle'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Helper to (re)create the active series. Returns the new series.
+  const createSeries = useCallback(() => {
+    if (!chartRef.current) return null
+    if (seriesRef.current) {
+      try { chartRef.current.removeSeries(seriesRef.current) } catch (e) {}
+      seriesRef.current = null
+    }
+    if (chartType === 'candle') {
+      seriesRef.current = chartRef.current.addCandlestickSeries({
+        upColor: '#4caf50',
+        downColor: '#f44336',
+        borderVisible: false,
+        wickUpColor: '#4caf50',
+        wickDownColor: '#f44336',
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+      })
+    } else {
+      seriesRef.current = chartRef.current.addAreaSeries({
+        lineColor: color,
+        topColor: color + '55',
+        bottomColor: color + '05',
+        lineWidth: 2,
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+      })
+    }
+    return seriesRef.current
+  }, [chartType, color])
 
   // Initialize chart once
   useEffect(() => {
@@ -45,9 +78,7 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
         timeVisible: true,
         secondsVisible: false,
       },
-      rightPriceScale: {
-        borderColor: gridColor,
-      },
+      rightPriceScale: { borderColor: gridColor },
       crosshair: {
         mode: 1,
         vertLine: { color: color, width: 1, style: 2 },
@@ -56,7 +87,6 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
       width: containerRef.current.clientWidth,
       height: 420,
     })
-
     chartRef.current = chart
 
     const handleResize = () => {
@@ -75,53 +105,20 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Swap series type when chartType changes
+  // Recreate series when chartType changes
   useEffect(() => {
-    if (!chartRef.current) return
-
-    // Remove old series if exists
-    if (seriesRef.current) {
-      try {
-        chartRef.current.removeSeries(seriesRef.current)
-      } catch (e) {
-        // series might already be gone
-      }
-      seriesRef.current = null
-    }
-
-    // Create new series of the chosen type
-    if (chartType === 'candle') {
-      seriesRef.current = chartRef.current.addCandlestickSeries({
-        upColor: '#4caf50',
-        downColor: '#f44336',
-        borderVisible: false,
-        wickUpColor: '#4caf50',
-        wickDownColor: '#f44336',
-        priceFormat: {
-          type: 'price',
-          precision: 2,
-          minMove: 0.01,
-        },
-      })
-    } else {
-      seriesRef.current = chartRef.current.addAreaSeries({
-        lineColor: color,
-        topColor: color + '55',
-        bottomColor: color + '05',
-        lineWidth: 2,
-        priceFormat: {
-          type: 'price',
-          precision: 2,
-          minMove: 0.01,
-        },
-      })
-    }
-    // Trigger a data refetch for the new series
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartType, color])
+    createSeries()
+  }, [createSeries])
 
   // Fetch data when coinId, days, OR chartType changes
   useEffect(() => {
+    if (!chartRef.current) return
+
+    // Defensive: ensure a series exists. If a previous error wiped it out,
+    // recreate it now so the new fetch has somewhere to render.
+    if (!seriesRef.current) {
+      createSeries()
+    }
     if (!seriesRef.current) return
 
     const requestId = ++latestRequestId.current
@@ -131,21 +128,16 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
 
     async function fetchChart() {
       try {
-        // For candle view, use OHLC endpoint; for area, use market_chart
-        const url = chartType === 'candle'
-          ? `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`
-          : `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`
-
+        const url = `/api/coingecko-chart?coin=${coinId}&days=${days}&type=${chartType}`
         const res = await fetch(url, { signal: abortController.signal })
 
-        // Bail if a newer request has started
         if (requestId !== latestRequestId.current) return
 
         if (!res.ok) {
-          if (res.status === 429) {
-            throw new Error('Rate limited — please wait a moment and try again.')
-          }
-          throw new Error(`Chart unavailable (${res.status})`)
+          const errBody = await res.json().catch(() => ({}))
+          if (res.status === 429) throw new Error('Rate limited — please wait a moment and try again.')
+          if (res.status === 401) throw new Error('Historical data beyond 365 days requires a paid plan')
+          throw new Error(errBody.error || `Chart unavailable (${res.status})`)
         }
 
         const json = await res.json()
@@ -153,13 +145,11 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
 
         let points = []
         if (chartType === 'candle') {
-          // OHLC response: [[time_ms, open, high, low, close], ...]
           points = (json || []).map(([time, open, high, low, close]) => ({
             time: Math.floor(time / 1000),
             open, high, low, close,
           }))
         } else {
-          // market_chart: { prices: [[time_ms, price], ...] }
           points = (json.prices || []).map(([time, value]) => ({
             time: Math.floor(time / 1000),
             value,
@@ -170,7 +160,6 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
           throw new Error('No data available for this range')
         }
 
-        // De-dupe: lightweight-charts errors on duplicate timestamps
         const seen = new Set()
         const cleaned = points.filter(p => {
           if (seen.has(p.time)) return false
@@ -178,7 +167,6 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
           return true
         }).sort((a, b) => a.time - b.time)
 
-        // Guard against series being gone (component unmounted or type switched)
         if (seriesRef.current && requestId === latestRequestId.current) {
           seriesRef.current.setData(cleaned)
           chartRef.current?.timeScale().fitContent()
@@ -194,11 +182,8 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
     }
 
     fetchChart()
-
-    return () => {
-      abortController.abort()
-    }
-  }, [coinId, days, chartType])
+    return () => abortController.abort()
+  }, [coinId, days, chartType, createSeries])
 
   return (
     <div className="coin-chart-wrap">
@@ -209,7 +194,6 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
               key={r.label}
               className={`chart-range-btn ${days === r.days ? 'active' : ''}`}
               onClick={() => setDays(r.days)}
-              disabled={loading}
             >
               {r.label}
             </button>
@@ -220,7 +204,6 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
           <button
             className={`chart-type-btn ${chartType === 'area' ? 'active' : ''}`}
             onClick={() => setChartType('area')}
-            disabled={loading}
             aria-label="Area chart"
             title="Area chart"
           >
@@ -232,7 +215,6 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
           <button
             className={`chart-type-btn ${chartType === 'candle' ? 'active' : ''}`}
             onClick={() => setChartType('candle')}
-            disabled={loading}
             aria-label="Candlestick chart"
             title="Candlestick chart"
           >
@@ -249,9 +231,7 @@ export default function CoinChart({ coinId, color = '#FF6B00' }) {
       <div className="coin-chart" ref={containerRef}>
         {loading && <div className="coin-chart-loading">Loading chart…</div>}
         {error && !loading && (
-          <div className="coin-chart-error">
-            {error}
-          </div>
+          <div className="coin-chart-error">{error}</div>
         )}
       </div>
     </div>
