@@ -1,0 +1,11 @@
+# robots.txt for gmcrypto.news
+# Allow all search engines to crawl the entire site.
+
+User-agent: *
+Allow: /
+
+# Block crawling of API routes — they're for the site's own use, not for indexing
+Disallow: /api/
+
+# Sitemap location — Google, Bing etc. will discover this automatically
+Sitemap: https://www.gmcrypto.news/sitemap.xml
