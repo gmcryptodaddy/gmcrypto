@@ -7,6 +7,7 @@ import Sidebar from '../../components/Sidebar'
 import Footer from '../../components/Footer'
 import ShareButton from '../../components/ShareButton'
 import SocialIcons from '../../components/SocialIcons'
+import { NewsArticleSchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery } from '../../lib/queries'
 import { generateHashtags } from '../../lib/hashtags'
@@ -69,12 +70,23 @@ export default function PostPage({ post }) {
   const description = post.excerpt || `Read ${post.title} on gm crypto.`
   const hashtags = generateHashtags(post.title, post.category, 4)
 
+  // Breadcrumb path — Home > Category > Article
+  const breadcrumbItems = [
+    { name: 'Home', url: SITE_URL },
+    ...(post.category ? [{
+      name: post.category,
+      url: `${SITE_URL}/?category=${encodeURIComponent(post.category)}`
+    }] : []),
+    { name: post.title, url: postUrl },
+  ]
+
   return (
     <>
       <Head>
         <title>{post.title} — GM Crypto News</title>
         <meta name="description" content={description} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="canonical" href={postUrl} />
 
         <meta property="og:title" content={post.title} />
         <meta property="og:description" content={description} />
@@ -100,6 +112,10 @@ export default function PostPage({ post }) {
         <meta name="twitter:image" content={ogImage} />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
+
+      {/* Structured data for Google News + breadcrumbs */}
+      <NewsArticleSchema post={post} imageUrl={ogImage} />
+      <BreadcrumbSchema items={breadcrumbItems} />
 
       <Ticker />
       <Navbar />
