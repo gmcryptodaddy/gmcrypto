@@ -1,6 +1,7 @@
 // pages/_app.js
 import Head from 'next/head'
 import '../styles/globals.css'
+import { OrganizationSchema } from '../components/StructuredData'
 
 export default function App({ Component, pageProps }) {
   return (
@@ -12,6 +13,8 @@ export default function App({ Component, pageProps }) {
         />
         <meta name="theme-color" content="#000000" />
       </Head>
+      {/* Organization schema on every page → knowledge panel eligibility */}
+      <OrganizationSchema />
       <Component {...pageProps} />
     </>
   )
