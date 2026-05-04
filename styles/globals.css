@@ -3225,3 +3225,160 @@ body.light .ticker-change.down { color: #f44336; }
   transition: opacity 0.15s;
 }
 .analysis-embed-retry:hover { opacity: 0.85; }
+/* ============================================================
+   ARTICLE BODY IMAGES — render Sanity image blocks inline
+   inside the article body. Used by PortableText image renderer.
+   ============================================================ */
+.article-body-image {
+  margin: 28px 0;
+  display: block;
+}
+.article-body-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+.article-body-image figcaption {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   RELATED POSTS — at the bottom of article pages, below the
+   disclaimer. "More in [Category]" with up to 4 cards.
+   ============================================================ */
+.related-posts {
+  margin-top: 56px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+.related-posts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+.related-posts-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--text);
+}
+.related-posts-more {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.related-posts-more:hover { opacity: 0.7; }
+
+.related-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+.related-post-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+  text-decoration: none;
+  color: inherit;
+}
+.related-post-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.related-post-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+  background: var(--bg3);
+}
+.related-post-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.related-post-cat {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.related-post-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0;
+  color: var(--text);
+  /* Clamp to 3 lines so cards stay even */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.related-post-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 700px) {
+  .related-posts-grid { grid-template-columns: 1fr; }
+  .related-posts-title { font-size: 18px; }
+}
+
+/* ============================================================
+   COIN PAGE — news section header (title + "View all →" link)
+   and timestamp on each card. Reuses existing .coin-related-* styles.
+   ============================================================ */
+.coin-related-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+.coin-related-header .coin-section-title {
+  margin: 0;
+}
+.coin-related-more {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.coin-related-more:hover { opacity: 0.7; }
+.coin-related-time {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+}
