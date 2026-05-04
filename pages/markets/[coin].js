@@ -1,7 +1,8 @@
 // pages/markets/[coin].js
-// Coin detail page. Uses ISR (Incremental Static Regeneration) — pages are
-// pre-rendered and revalidated every 5 minutes, giving crawlers reliable
-// fast responses while keeping prices reasonably fresh.
+// Coin detail page using ISR (Incremental Static Regeneration).
+// Pages render on-demand on first request, then cache + revalidate every 5 min.
+// No paths are pre-rendered at build time — avoids build failures from any
+// single coin slug returning unexpected data.
 
 import { useState } from 'react'
 import Head from 'next/head'
@@ -15,7 +16,6 @@ import { client, urlFor } from '../../lib/sanity'
 import {
   getCoinDetails,
   getCoinTickers,
-  getCoinsMarkets,
   formatPrice,
   formatBigNumber,
   formatPercent,
@@ -31,7 +31,7 @@ const CoinChart = dynamic(() => import('../../components/CoinChart'), {
 
 function stripHtml(html) {
   if (!html) return ''
-  return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+  return String(html).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
 
 function timeAgo(dateStr) {
@@ -49,16 +49,14 @@ function timeAgo(dateStr) {
   return `${d}d ago`
 }
 
-// SEO-friendly meta description with live price + market data baked in.
-// Crawlers see this fresh on each ISR regen, signaling the page has fresh content.
 function buildMetaDescription(coin) {
   const md = coin.market_data || {}
   const price = md.current_price?.usd
   const change = md.price_change_percentage_24h
   const cap = md.market_cap?.usd
   const rank = coin.market_cap_rank
-  const symbol = coin.symbol?.toUpperCase()
-  const name = coin.name
+  const symbol = coin.symbol ? coin.symbol.toUpperCase() : ''
+  const name = coin.name || 'Coin'
 
   const parts = []
   if (price) {
@@ -66,7 +64,7 @@ function buildMetaDescription(coin) {
   } else {
     parts.push(`${name} (${symbol}) live price, chart, and market cap`)
   }
-  if (change != null) {
+  if (change != null && !isNaN(change)) {
     const sign = change >= 0 ? '+' : ''
     parts.push(`${sign}${change.toFixed(2)}% (24h)`)
   }
@@ -78,8 +76,8 @@ function buildMetaDescription(coin) {
 function buildMetaTitle(coin) {
   const md = coin.market_data || {}
   const price = md.current_price?.usd
-  const symbol = coin.symbol?.toUpperCase()
-  const name = coin.name
+  const symbol = coin.symbol ? coin.symbol.toUpperCase() : ''
+  const name = coin.name || 'Coin'
   if (price) {
     return `${name} (${symbol}) Price: ${formatPrice(price)} USD — Live Chart & News | GM Crypto`
   }
@@ -109,6 +107,8 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
     )
   }
 
+  // All field accesses are defensively chained — any single missing field
+  // will fall back to '—' or be hidden, never crash the render.
   const md = coin.market_data || {}
   const price = md.current_price?.usd
   const change24h = md.price_change_percentage_24h
@@ -124,6 +124,8 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   const totalSupply = md.total_supply
   const maxSupply = md.max_supply
   const rank = coin.market_cap_rank
+  const symbolUpper = coin.symbol ? coin.symbol.toUpperCase() : ''
+  const coinName = coin.name || 'Coin'
 
   const description = stripHtml(coin.description?.en || '')
   const shortDesc = description.slice(0, 400)
@@ -131,11 +133,10 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
 
   const homepage = coin.links?.homepage?.[0]
   const twitter = coin.links?.twitter_screen_name
-  const reddit = coin.links?.subreddit_url
   const github = coin.links?.repos_url?.github?.[0]
 
-  const hasNews = relatedArticles && relatedArticles.length > 0
-  const newsCategorySlug = `${coin.name} News`
+  const hasNews = Array.isArray(relatedArticles) && relatedArticles.length > 0
+  const newsCategorySlug = `${coinName} News`
 
   const pageUrl = `${SITE_URL}/markets/${coin.id}`
   const metaTitle = buildMetaTitle(coin)
@@ -145,8 +146,13 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   const breadcrumbItems = [
     { name: 'Home', url: SITE_URL },
     { name: 'Markets', url: `${SITE_URL}/markets` },
-    { name: coin.name, url: pageUrl },
+    { name: coinName, url: pageUrl },
   ]
+
+  // Render-safe number checks
+  const isUp7d = typeof change7d === 'number' && change7d >= 0
+  const isUp30d = typeof change30d === 'number' && change30d >= 0
+  const isUp24h = typeof change24h === 'number' && change24h >= 0
 
   return (
     <>
@@ -158,7 +164,7 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDescription} />
         <meta property="og:image" content={ogImage} />
-        <meta property="og:image:alt" content={`${coin.name} logo`} />
+        <meta property="og:image:alt" content={`${coinName} logo`} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GM Crypto News" />
@@ -183,20 +189,23 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           <span className="sep">/</span>
           <Link href="/markets">Markets</Link>
           <span className="sep">/</span>
-          <span>{coin.name}</span>
+          <span>{coinName}</span>
         </div>
 
         <section className="coin-header">
           <div className="coin-header-top">
             <div className="coin-header-identity">
               {coin.image?.large && (
-                <img src={coin.image.large} alt={`${coin.name} logo`} className="coin-header-img" />
+                <img src={coin.image.large} alt={`${coinName} logo`} className="coin-header-img" />
               )}
               <div>
-                <div className="coin-header-rank">#{rank} • {coin.categories?.[0] || 'Coin'}</div>
+                <div className="coin-header-rank">
+                  {rank ? `#${rank}` : 'Coin'}
+                  {coin.categories && coin.categories[0] ? ` • ${coin.categories[0]}` : ''}
+                </div>
                 <h1 className="coin-header-name">
-                  {coin.name}
-                  <span className="coin-header-symbol">{coin.symbol?.toUpperCase()}</span>
+                  {coinName}
+                  {symbolUpper && <span className="coin-header-symbol">{symbolUpper}</span>}
                 </h1>
               </div>
             </div>
@@ -216,8 +225,8 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
 
           <div className="coin-header-price">
             <div className="coin-price-value">{formatPrice(price)}</div>
-            {change24h != null && (
-              <div className={`coin-price-change ${change24h >= 0 ? 'up' : 'down'}`}>
+            {typeof change24h === 'number' && (
+              <div className={`coin-price-change ${isUp24h ? 'up' : 'down'}`}>
                 {formatPercent(change24h)} <span className="coin-price-change-label">(24h)</span>
               </div>
             )}
@@ -239,18 +248,18 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">Circulating Supply</div>
-            <div className="coin-stat-value">{formatSupply(circSupply)} {coin.symbol?.toUpperCase()}</div>
+            <div className="coin-stat-value">{formatSupply(circSupply)} {symbolUpper}</div>
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">Max Supply</div>
             <div className="coin-stat-value">
-              {maxSupply ? `${formatSupply(maxSupply)} ${coin.symbol?.toUpperCase()}` : '∞'}
+              {maxSupply ? `${formatSupply(maxSupply)} ${symbolUpper}` : '∞'}
             </div>
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">All-Time High</div>
             <div className="coin-stat-value">{formatPrice(ath)}</div>
-            {athChange != null && (
+            {typeof athChange === 'number' && (
               <div className={`coin-stat-sub ${athChange >= 0 ? 'up' : 'down'}`}>
                 {formatPercent(athChange)} from ATH
               </div>
@@ -259,7 +268,7 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           <div className="coin-stat">
             <div className="coin-stat-label">All-Time Low</div>
             <div className="coin-stat-value">{formatPrice(atl)}</div>
-            {atlChange != null && (
+            {typeof atlChange === 'number' && (
               <div className={`coin-stat-sub ${atlChange >= 0 ? 'up' : 'down'}`}>
                 {formatPercent(atlChange)} from ATL
               </div>
@@ -267,13 +276,13 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">7d Change</div>
-            <div className={`coin-stat-value ${change7d >= 0 ? 'up' : 'down'}`}>
+            <div className={`coin-stat-value ${isUp7d ? 'up' : 'down'}`}>
               {formatPercent(change7d)}
             </div>
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">30d Change</div>
-            <div className={`coin-stat-value ${change30d >= 0 ? 'up' : 'down'}`}>
+            <div className={`coin-stat-value ${isUp30d ? 'up' : 'down'}`}>
               {formatPercent(change30d)}
             </div>
           </div>
@@ -282,7 +291,7 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
         {hasNews && (
           <section className="coin-related">
             <div className="coin-related-header">
-              <h2 className="coin-section-title">Latest {coin.name} News</h2>
+              <h2 className="coin-section-title">Latest {coinName} News</h2>
               <Link
                 href={`/?category=${encodeURIComponent(newsCategorySlug)}`}
                 className="coin-related-more"
@@ -294,13 +303,13 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
               {relatedArticles.map((post) => (
                 <Link
                   key={post._id}
-                  href={`/post/${post.slug.current}`}
+                  href={`/post/${post.slug?.current || ''}`}
                   className="coin-related-card"
                 >
                   {post.mainImage ? (
                     <img
                       src={urlFor(post.mainImage).width(400).height(220).url()}
-                      alt={post.title}
+                      alt={post.title || ''}
                       className="coin-related-img"
                     />
                   ) : (
@@ -323,7 +332,7 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
 
         {description && (
           <section className="coin-about">
-            <h2 className="coin-section-title">About {coin.name}</h2>
+            <h2 className="coin-section-title">About {coinName}</h2>
             <p className="coin-about-text">
               {showFullAbout ? description : shortDesc}
               {hasMore && !showFullAbout && '…'}
@@ -339,9 +348,9 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </section>
         )}
 
-        {tickers && tickers.length > 0 && (
+        {Array.isArray(tickers) && tickers.length > 0 && (
           <section className="coin-exchanges">
-            <h2 className="coin-section-title">Top {coin.symbol?.toUpperCase()} Markets</h2>
+            <h2 className="coin-section-title">Top {symbolUpper} Markets</h2>
             <div className="coin-exchanges-wrap">
               <table className="coin-exchanges-table">
                 <thead>
@@ -359,7 +368,7 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
                     <tr key={i}>
                       <td>{i + 1}</td>
                       <td>{t.market?.name || '—'}</td>
-                      <td><span className="coin-pair">{t.base}/{t.target}</span></td>
+                      <td><span className="coin-pair">{t.base || '?'}/{t.target || '?'}</span></td>
                       <td className="right">{formatPrice(t.converted_last?.usd)}</td>
                       <td className="right">{formatBigNumber(t.converted_volume?.usd)}</td>
                       <td className="right">
@@ -380,39 +389,52 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
 }
 
 // --- ISR setup ---
-// Top 100 coins are pre-rendered at build time. Anything outside that gets
-// rendered on first request (fallback: 'blocking') and then cached.
-// Pages refresh every 5 minutes, giving crawlers reliable + reasonably fresh data.
-
-const TOP_COINS_TO_PREBUILD = [
-  'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
-  'cardano', 'avalanche-2', 'dogecoin', 'tron', 'chainlink',
-  'polkadot', 'polygon', 'litecoin', 'shiba-inu', 'uniswap',
-]
+// IMPORTANT: `paths: []` means NO coin pages are pre-rendered at build time.
+// This avoids any single bad CoinGecko response from breaking the entire build.
+// `fallback: 'blocking'` means the first visitor to any coin page triggers a
+// server render, which then caches for 5 minutes. After that, every visitor
+// gets the cached version instantly.
+//
+// Tradeoff: first visitor sees a brief delay (~1-2s) while the page renders.
+// All subsequent visitors get an instant cached response.
 
 export async function getStaticPaths() {
   return {
-    paths: TOP_COINS_TO_PREBUILD.map(coin => ({ params: { coin } })),
+    paths: [],
     fallback: 'blocking',
   }
 }
 
 export async function getStaticProps({ params }) {
+  // Wrap EVERYTHING in try/catch. Any unexpected error returns notFound
+  // gracefully instead of crashing the build.
   try {
-    const [coin, tickersData] = await Promise.all([
-      getCoinDetails(params.coin),
-      getCoinTickers(params.coin).catch(() => null),
-    ])
+    let coin = null
+    let tickersData = null
 
-    if (!coin) {
+    try {
+      coin = await getCoinDetails(params.coin)
+    } catch (err) {
+      console.error(`Failed to fetch coin ${params.coin}:`, err.message)
       return { notFound: true, revalidate: 60 }
     }
 
-    const symbol = coin.symbol?.toUpperCase()
-    const name = coin.name
-    let relatedArticles = []
+    if (!coin || !coin.id) {
+      return { notFound: true, revalidate: 60 }
+    }
 
+    // Tickers are optional — never let them fail the page
     try {
+      tickersData = await getCoinTickers(params.coin)
+    } catch (err) {
+      console.error(`Failed to fetch tickers for ${params.coin}:`, err.message)
+    }
+
+    // Related articles are optional too
+    let relatedArticles = []
+    try {
+      const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
+      const name = coin.name
       if (name) {
         const useSymbol = symbol && symbol.length >= 3
         const query = useSymbol
@@ -440,24 +462,19 @@ export async function getStaticProps({ params }) {
         relatedArticles = await client.fetch(query, queryParams)
       }
     } catch (err) {
-      console.error('Related articles error:', err)
+      console.error('Related articles error:', err.message)
     }
 
     return {
       props: {
         coin,
         tickers: tickersData?.tickers || [],
-        relatedArticles: relatedArticles || [],
+        relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
       },
-      // Refresh every 5 minutes — fresh enough for prices, slow enough to
-      // keep CoinGecko happy and serve crawlers from cache instantly.
       revalidate: 300,
     }
   } catch (error) {
-    console.error('Coin page error:', error)
-    return {
-      props: { coin: null, tickers: [], relatedArticles: [] },
-      revalidate: 60,
-    }
+    console.error('Coin page unexpected error:', error)
+    return { notFound: true, revalidate: 60 }
   }
 }
