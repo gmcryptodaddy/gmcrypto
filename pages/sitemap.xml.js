@@ -1,16 +1,16 @@
 // pages/sitemap.xml.js
-// Dynamic XML sitemap for SEO. Generated on each request from Sanity data
-// + static pages. Cached at the edge for 1 hour.
+// Main XML sitemap. Generated dynamically from Sanity data + static pages
+// + top 100 coin detail pages.
+//
+// The Google News sitemap lives separately at /sitemap-news.xml so news
+// crawlers can hit a lightweight 48h-only feed. Robots.txt references both.
 
 import { client } from '../lib/sanity'
 
 const SITE_URL = 'https://www.gmcrypto.news'
 
-// Static pages with relative priority (0.0–1.0) and change frequency.
-// Priority is a hint to Google about which pages matter most relative to
-// other pages on YOUR site.
 const STATIC_PAGES = [
-  { path: '',              priority: 1.0, changefreq: 'hourly'  }, // homepage
+  { path: '',              priority: 1.0, changefreq: 'hourly'  },
   { path: '/markets',      priority: 0.9, changefreq: 'hourly'  },
   { path: '/markets/gainers',   priority: 0.7, changefreq: 'hourly' },
   { path: '/markets/losers',    priority: 0.7, changefreq: 'hourly' },
@@ -24,14 +24,31 @@ const STATIC_PAGES = [
   { path: '/disclaimer',   priority: 0.2, changefreq: 'yearly'  },
 ]
 
-// Top coins to include in sitemap (matches your /markets/[coin] pages).
-// Pulling top 100 from CoinGecko in the sitemap would be heavy and most
-// of those tail pages won't have unique content yet — so we list the
-// big ones explicitly. You can grow this list over time.
-const COIN_SLUGS = [
-  'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
-  'cardano', 'avalanche-2', 'dogecoin', 'tron', 'chainlink',
-  'polkadot', 'polygon', 'litecoin', 'shiba-inu', 'uniswap',
+// Top 100 coins by market cap — covers ~99% of search volume for coin pages.
+// Static list to avoid hitting CoinGecko API for every sitemap regeneration.
+// Update periodically as the market shifts; alternative is fetching live from
+// CoinGecko but that risks rate limits + slow sitemap responses.
+const TOP_COIN_SLUGS = [
+  'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
+  'ripple', 'usd-coin', 'staked-ether', 'dogecoin', 'cardano',
+  'tron', 'avalanche-2', 'chainlink', 'polkadot', 'wrapped-bitcoin',
+  'shiba-inu', 'polygon', 'litecoin', 'bitcoin-cash', 'dai',
+  'leo-token', 'uniswap', 'kaspa', 'pepe', 'near',
+  'aptos', 'internet-computer', 'monero', 'fetch-ai', 'stellar',
+  'ethereum-classic', 'cosmos', 'okb', 'render-token', 'crypto-com-chain',
+  'hedera-hashgraph', 'filecoin', 'arbitrum', 'mantle', 'maker',
+  'immutable-x', 'optimism', 'stacks', 'first-digital-usd', 'vechain',
+  'kucoin-shares', 'theta-token', 'the-graph', 'sui', 'fantom',
+  'injective-protocol', 'algorand', 'lido-dao', 'rocket-pool-eth', 'frax',
+  'tezos', 'thorchain', 'celestia', 'eos', 'aave',
+  'flow', 'sei-network', 'pancakeswap-token', 'rocket-pool', 'true-usd',
+  'ordinals', 'havven', 'klaytn', 'gemini-dollar', 'iota',
+  'bonk', 'jasmycoin', 'axie-infinity', 'gala', 'nervos-network',
+  'neo', 'tellor', 'zcash', 'beam-2', 'kava',
+  'wemix-token', 'akash-network', 'gatechain-token', 'osmosis', 'helium',
+  'mina-protocol', 'pyth-network', 'curve-dao-token', 'jupiter-exchange-solana', '1inch',
+  'huobi-token', 'dash', 'qtum', 'compound-governance-token', 'ravencoin',
+  'enjincoin', 'ecash', 'gnosis', 'ondo-finance', 'hyperliquid',
 ]
 
 function escapeXml(str) {
@@ -55,7 +72,7 @@ function generateSiteMap(posts) {
     <priority>${p.priority}</priority>
   </url>`).join('')
 
-  const coinEntries = COIN_SLUGS.map(slug => `
+  const coinEntries = TOP_COIN_SLUGS.map(slug => `
   <url>
     <loc>${SITE_URL}/markets/${slug}</loc>
     <lastmod>${today}</lastmod>
@@ -63,40 +80,26 @@ function generateSiteMap(posts) {
     <priority>0.7</priority>
   </url>`).join('')
 
-  // Article entries with news:news block — eligible for Google News
   const articleEntries = posts.map(post => {
     const slug = post.slug?.current
     if (!slug) return ''
     const lastmod = post.publishedAt
       ? new Date(post.publishedAt).toISOString()
       : new Date().toISOString()
-    const isRecent = post.publishedAt &&
-      (Date.now() - new Date(post.publishedAt).getTime()) < 2 * 24 * 60 * 60 * 1000
-
     return `
   <url>
     <loc>${SITE_URL}/post/${slug}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>${isRecent ? `
-    <news:news>
-      <news:publication>
-        <news:name>GM Crypto News</news:name>
-        <news:language>en</news:language>
-      </news:publication>
-      <news:publication_date>${lastmod}</news:publication_date>
-      <news:title>${escapeXml(post.title)}</news:title>
-    </news:news>` : ''}
+    <priority>0.8</priority>
   </url>`
   }).join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${staticEntries}${coinEntries}${articleEntries}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticEntries}${coinEntries}${articleEntries}
 </urlset>`
 }
 
-// SiteMap component itself never renders — getServerSideProps handles the response
 function SiteMap() { return null }
 
 export async function getServerSideProps({ res }) {
@@ -104,9 +107,7 @@ export async function getServerSideProps({ res }) {
   try {
     posts = await client.fetch(`
       *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {
-        title,
-        slug,
-        publishedAt
+        title, slug, publishedAt
       }
     `)
   } catch (err) {
@@ -114,13 +115,10 @@ export async function getServerSideProps({ res }) {
   }
 
   const sitemap = generateSiteMap(posts || [])
-
   res.setHeader('Content-Type', 'application/xml')
-  // Cache for 1 hour at the edge, allow 6 hours stale-while-revalidate
   res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=21600')
   res.write(sitemap)
   res.end()
-
   return { props: {} }
 }
 
