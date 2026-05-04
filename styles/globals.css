@@ -3382,3 +3382,30 @@ body.light .ticker-change.down { color: #f44336; }
   color: var(--text3);
   letter-spacing: 0.04em;
 }
+/* ============================================================
+   READING TIME — small "X min read" badge in article meta row,
+   shown next to the publish date.
+   ============================================================ */
+.post-meta-sep {
+  margin: 0 6px;
+  color: var(--text3);
+}
+.reading-time {
+  color: var(--text3);
+  font-size: inherit;
+}
+
+/* ============================================================
+   LINKED COIN HASHTAGS — when a hashtag matches a coin we have
+   a /markets page for, render it as a clickable link with subtle
+   hover effect. Boosts internal linking → better SEO.
+   ============================================================ */
+.article-hashtag-link {
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  text-decoration: none;
+}
+.article-hashtag-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
