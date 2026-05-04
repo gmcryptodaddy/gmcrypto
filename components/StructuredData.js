@@ -1,20 +1,22 @@
 // components/StructuredData.js
 // JSON-LD structured data components for SEO.
-// Helps Google understand your site → richer search results, knowledge panel
-// eligibility, Google News inclusion, breadcrumb display in SERPs.
 //
-// Usage:
-//   <OrganizationSchema />              — on every page (in _app or layout)
-//   <WebsiteSchema />                   — on homepage
-//   <NewsArticleSchema post={post} />   — on /post/[slug] pages
-//   <BreadcrumbSchema items={[...]} /> — on any page with breadcrumb structure
+// Available schemas:
+//   <OrganizationSchema />            — every page (knowledge panel eligibility)
+//   <WebsiteSchema />                 — homepage
+//   <NewsArticleSchema post={...} />  — article pages (Google News eligibility)
+//   <BreadcrumbSchema items={[...]} /> — any page with breadcrumb structure
+//   <CryptocurrencySchema coin={...}/> — coin detail pages
+//
+// Notes:
+//   - JSON-LD is the format Google explicitly recommends over microdata/RDFa
+//   - Multiple schemas can coexist on a single page
 
 import Head from 'next/head'
 
 const SITE_URL = 'https://www.gmcrypto.news'
 const SITE_NAME = 'GM Crypto News'
 
-// Inline JSON-LD as a script tag in <head>
 function JsonLd({ data }) {
   return (
     <Head>
@@ -27,8 +29,7 @@ function JsonLd({ data }) {
   )
 }
 
-// Organization schema — tells Google about your brand identity.
-// Eligible for the "knowledge panel" sidebar on branded searches over time.
+// Organization → knowledge panel eligibility for branded searches
 export function OrganizationSchema() {
   const data = {
     '@context': 'https://schema.org',
@@ -51,8 +52,7 @@ export function OrganizationSchema() {
   return <JsonLd data={data} />
 }
 
-// WebSite schema — registers your site as a navigable property.
-// (If you ever add site-wide search, this enables a search box in Google results.)
+// WebSite — registers your site + future SearchAction support
 export function WebsiteSchema() {
   const data = {
     '@context': 'https://schema.org',
@@ -62,20 +62,27 @@ export function WebsiteSchema() {
     publisher: {
       '@type': 'NewsMediaOrganization',
       name: SITE_NAME,
-      logo: {
-        '@type': 'ImageObject',
-        url: `${SITE_URL}/logo-full.png`,
-      },
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo-full.png` },
     },
   }
   return <JsonLd data={data} />
 }
 
-// NewsArticle schema — eligible for Google News + Top Stories carousel.
-// Pass the full Sanity post object plus a urlFor() helper for the image.
-export function NewsArticleSchema({ post, imageUrl }) {
+// NewsArticle — Google News + Top Stories eligibility
+// Now includes: wordCount, keywords, Person author when available, articleBody preview
+export function NewsArticleSchema({ post, imageUrl, wordCount, hashtags }) {
   if (!post) return null
   const url = `${SITE_URL}/post/${post.slug.current}`
+
+  // Person author preferred over Organization for news content (Google E-E-A-T)
+  const author = post.author?.name
+    ? {
+        '@type': 'Person',
+        name: post.author.name,
+        ...(post.author.bio ? { description: post.author.bio } : {}),
+      }
+    : { '@type': 'Organization', name: SITE_NAME }
+
   const data = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
@@ -84,9 +91,7 @@ export function NewsArticleSchema({ post, imageUrl }) {
     image: imageUrl ? [imageUrl] : [`${SITE_URL}/og-image.png`],
     datePublished: post.publishedAt,
     dateModified: post.publishedAt,
-    author: post.author?.name
-      ? { '@type': 'Person', name: post.author.name }
-      : { '@type': 'Organization', name: SITE_NAME },
+    author,
     publisher: {
       '@type': 'NewsMediaOrganization',
       name: SITE_NAME,
@@ -97,18 +102,18 @@ export function NewsArticleSchema({ post, imageUrl }) {
         height: 200,
       },
     },
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': url,
-    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     articleSection: post.category || 'News',
     inLanguage: 'en',
+    ...(wordCount ? { wordCount } : {}),
+    ...(hashtags?.length
+      ? { keywords: hashtags.map(t => t.replace(/^#/, '')).join(', ') }
+      : {}),
   }
   return <JsonLd data={data} />
 }
 
-// BreadcrumbList — shows breadcrumb path in Google search results.
-// items is an array of { name, url } in order.
+// BreadcrumbList — shows breadcrumb path in search results
 export function BreadcrumbSchema({ items }) {
   if (!items || items.length === 0) return null
   const data = {
@@ -120,6 +125,42 @@ export function BreadcrumbSchema({ items }) {
       name: item.name,
       item: item.url,
     })),
+  }
+  return <JsonLd data={data} />
+}
+
+// Cryptocurrency / FinancialProduct schema for coin detail pages.
+// Uses both @type values via array — schema.org supports multi-typing,
+// and Google indexes financial entities better with FinancialProduct.
+export function CryptocurrencySchema({ coin }) {
+  if (!coin) return null
+  const md = coin.market_data || {}
+  const url = `${SITE_URL}/markets/${coin.id}`
+
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': ['Product', 'FinancialProduct'],
+    name: coin.name,
+    alternateName: coin.symbol?.toUpperCase(),
+    description:
+      (coin.description?.en || `${coin.name} (${coin.symbol?.toUpperCase()}) live price, chart, market cap, and trading volume.`)
+        .replace(/<[^>]*>/g, '')
+        .slice(0, 500),
+    image: coin.image?.large,
+    url,
+    category: 'Cryptocurrency',
+    brand: { '@type': 'Brand', name: coin.name },
+    ...(md.current_price?.usd
+      ? {
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'USD',
+            price: md.current_price.usd,
+            url,
+            availability: 'https://schema.org/InStock',
+          },
+        }
+      : {}),
   }
   return <JsonLd data={data} />
 }
