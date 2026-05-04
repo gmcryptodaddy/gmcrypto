@@ -9,7 +9,7 @@ import ShareButton from '../../components/ShareButton'
 import SocialIcons from '../../components/SocialIcons'
 import { NewsArticleSchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
-import { singlePostQuery, allPostsQuery } from '../../lib/queries'
+import { singlePostQuery, allPostsQuery, relatedPostsQuery } from '../../lib/queries'
 import { generateHashtags } from '../../lib/hashtags'
 
 const SITE_URL = 'https://www.gmcrypto.news'
@@ -22,7 +22,41 @@ function formatDate(dateStr) {
   })
 }
 
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const diff = (Date.now() - new Date(dateStr)) / 1000
+  if (diff < 3600) {
+    const m = Math.floor(diff / 60)
+    return `${m}m ago`
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff / 3600)
+    return `${h}h ago`
+  }
+  const d = Math.floor(diff / 86400)
+  return `${d}d ago`
+}
+
 const ptComponents = {
+  // Block-level types: image embeds in article body
+  types: {
+    image: ({ value }) => {
+      if (!value?.asset) return null
+      const url = urlFor(value).width(1200).fit('max').auto('format').url()
+      return (
+        <figure className="article-body-image">
+          <img
+            src={url}
+            alt={value.alt || ''}
+            loading="lazy"
+          />
+          {value.caption && (
+            <figcaption>{value.caption}</figcaption>
+          )}
+        </figure>
+      )
+    },
+  },
   block: {
     h2: ({ children }) => <h2>{children}</h2>,
     h3: ({ children }) => <h3>{children}</h3>,
@@ -46,7 +80,7 @@ const ptComponents = {
   },
 }
 
-export default function PostPage({ post }) {
+export default function PostPage({ post, relatedPosts }) {
   if (!post) return (
     <>
       <Head>
@@ -70,7 +104,6 @@ export default function PostPage({ post }) {
   const description = post.excerpt || `Read ${post.title} on gm crypto.`
   const hashtags = generateHashtags(post.title, post.category, 4)
 
-  // Breadcrumb path — Home > Category > Article
   const breadcrumbItems = [
     { name: 'Home', url: SITE_URL },
     ...(post.category ? [{
@@ -79,6 +112,8 @@ export default function PostPage({ post }) {
     }] : []),
     { name: post.title, url: postUrl },
   ]
+
+  const hasRelated = relatedPosts && relatedPosts.length > 0
 
   return (
     <>
@@ -113,7 +148,6 @@ export default function PostPage({ post }) {
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
-      {/* Structured data for Google News + breadcrumbs */}
       <NewsArticleSchema post={post} imageUrl={ogImage} />
       <BreadcrumbSchema items={breadcrumbItems} />
 
@@ -190,6 +224,52 @@ export default function PostPage({ post }) {
           <div style={{ marginTop: 48, padding: '20px', background: 'var(--bg2)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text3)' }}>
             ⚠️ <strong style={{ color: 'var(--text2)' }}>Disclaimer:</strong> This article is for informational purposes only and does not constitute financial advice. Always do your own research before making investment decisions.
           </div>
+
+          {/* Related articles — appears at the bottom of the article body,
+              before the sidebar (which is to the right on desktop, below on mobile) */}
+          {hasRelated && (
+            <section className="related-posts">
+              <div className="related-posts-header">
+                <h2 className="related-posts-title">
+                  More {post.category ? `in ${post.category}` : 'from GM Crypto'}
+                </h2>
+                {post.category && (
+                  <Link
+                    href={`/?category=${encodeURIComponent(post.category)}`}
+                    className="related-posts-more"
+                  >
+                    View all →
+                  </Link>
+                )}
+              </div>
+              <div className="related-posts-grid">
+                {relatedPosts.map((rp) => (
+                  <Link
+                    key={rp._id}
+                    href={`/post/${rp.slug.current}`}
+                    className="related-post-card"
+                  >
+                    {rp.mainImage ? (
+                      <img
+                        src={urlFor(rp.mainImage).width(400).height(220).url()}
+                        alt={rp.title}
+                        className="related-post-img"
+                      />
+                    ) : (
+                      <div className="related-post-img img-placeholder">[ no image ]</div>
+                    )}
+                    <div className="related-post-body">
+                      {rp.category && (
+                        <span className="related-post-cat">{rp.category}</span>
+                      )}
+                      <h3 className="related-post-title">{rp.title}</h3>
+                      <span className="related-post-time">{timeAgo(rp.publishedAt)}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </article>
 
         <Sidebar />
@@ -215,11 +295,31 @@ export async function getStaticPaths() {
 export async function getStaticProps({ params }) {
   try {
     const post = await client.fetch(singlePostQuery, { slug: params.slug })
+
+    let relatedPosts = []
+    if (post?._id) {
+      try {
+        const result = await client.fetch(relatedPostsQuery, {
+          currentId: post._id,
+          category: post.category || '',
+        })
+        // Use category matches if there are any, otherwise fall back to recent
+        relatedPosts = (result?.byCategory?.length > 0)
+          ? result.byCategory
+          : (result?.fallback || [])
+      } catch (err) {
+        console.error('Related posts fetch error:', err)
+      }
+    }
+
     return {
-      props: { post: post || null },
+      props: {
+        post: post || null,
+        relatedPosts,
+      },
       revalidate: 60,
     }
   } catch {
-    return { props: { post: null }, revalidate: 60 }
+    return { props: { post: null, relatedPosts: [] }, revalidate: 60 }
   }
 }
