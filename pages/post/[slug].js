@@ -11,6 +11,8 @@ import { NewsArticleSchema, BreadcrumbSchema } from '../../components/Structured
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery, relatedPostsQuery } from '../../lib/queries'
 import { generateHashtags } from '../../lib/hashtags'
+import { getReadingTime, getWordCount } from '../../lib/readingTime'
+import { getCoinSlug } from '../../lib/coinLinks'
 
 const SITE_URL = 'https://www.gmcrypto.news'
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
@@ -37,22 +39,23 @@ function timeAgo(dateStr) {
   return `${d}d ago`
 }
 
+// Map a hashtag like "#BTC" or "#Bitcoin" to a coin slug if it matches one
+// of our supported coins. Returns null if no match.
+function hashtagToCoinSlug(hashtag) {
+  if (!hashtag) return null
+  const stripped = hashtag.replace(/^#/, '').toLowerCase()
+  return getCoinSlug(stripped)
+}
+
 const ptComponents = {
-  // Block-level types: image embeds in article body
   types: {
     image: ({ value }) => {
       if (!value?.asset) return null
       const url = urlFor(value).width(1200).fit('max').auto('format').url()
       return (
         <figure className="article-body-image">
-          <img
-            src={url}
-            alt={value.alt || ''}
-            loading="lazy"
-          />
-          {value.caption && (
-            <figcaption>{value.caption}</figcaption>
-          )}
+          <img src={url} alt={value.alt || ''} loading="lazy" />
+          {value.caption && <figcaption>{value.caption}</figcaption>}
         </figure>
       )
     },
@@ -65,7 +68,7 @@ const ptComponents = {
   },
   marks: {
     link: ({ value, children }) => (
-      <a href={value.href} target="_blank" rel="noopener noreferrer">{children}</a>
+      <a href={value.href} target="_blank" rel="noopener noreferrer nofollow">{children}</a>
     ),
     strong: ({ children }) => <strong>{children}</strong>,
     em: ({ children }) => <em>{children}</em>,
@@ -85,6 +88,7 @@ export default function PostPage({ post, relatedPosts }) {
     <>
       <Head>
         <title>Article not found — GM Crypto News</title>
+        <meta name="robots" content="noindex" />
       </Head>
       <Ticker />
       <Navbar />
@@ -103,6 +107,8 @@ export default function PostPage({ post, relatedPosts }) {
   const postUrl = `${SITE_URL}/post/${post.slug.current}`
   const description = post.excerpt || `Read ${post.title} on gm crypto.`
   const hashtags = generateHashtags(post.title, post.category, 4)
+  const wordCount = getWordCount(post.body)
+  const readingTime = getReadingTime(post.body)
 
   const breadcrumbItems = [
     { name: 'Home', url: SITE_URL },
@@ -128,9 +134,11 @@ export default function PostPage({ post, relatedPosts }) {
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={post.title} />
         <meta property="og:url" content={postUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="GM Crypto News" />
+        <meta property="og:locale" content="en_US" />
         {post.publishedAt && (
           <meta property="article:published_time" content={post.publishedAt} />
         )}
@@ -140,15 +148,34 @@ export default function PostPage({ post, relatedPosts }) {
         {post.category && (
           <meta property="article:section" content={post.category} />
         )}
+        {hashtags.map(tag => (
+          <meta key={tag} property="article:tag" content={tag.replace(/^#/, '')} />
+        ))}
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
         <meta name="twitter:site" content="@gm_cryptonews" />
+        {post.author?.name && (
+          <meta name="twitter:creator" content={post.author.name} />
+        )}
+        <meta name="twitter:label1" content="Reading time" />
+        <meta name="twitter:data1" content={`${readingTime} min read`} />
+        {post.category && (
+          <>
+            <meta name="twitter:label2" content="Category" />
+            <meta name="twitter:data2" content={post.category} />
+          </>
+        )}
       </Head>
 
-      <NewsArticleSchema post={post} imageUrl={ogImage} />
+      <NewsArticleSchema
+        post={post}
+        imageUrl={ogImage}
+        wordCount={wordCount}
+        hashtags={hashtags}
+      />
       <BreadcrumbSchema items={breadcrumbItems} />
 
       <Ticker />
@@ -182,9 +209,20 @@ export default function PostPage({ post, relatedPosts }) {
 
             {hashtags.length > 0 && (
               <div className="article-page-hashtags">
-                {hashtags.map(tag => (
-                  <span key={tag} className="article-hashtag">{tag}</span>
-                ))}
+                {hashtags.map(tag => {
+                  const coinSlug = hashtagToCoinSlug(tag)
+                  return coinSlug ? (
+                    <Link
+                      key={tag}
+                      href={`/markets/${coinSlug}`}
+                      className="article-hashtag article-hashtag-link"
+                    >
+                      {tag}
+                    </Link>
+                  ) : (
+                    <span key={tag} className="article-hashtag">{tag}</span>
+                  )
+                })}
               </div>
             )}
 
@@ -200,7 +238,15 @@ export default function PostPage({ post, relatedPosts }) {
                 {post.author?.name && (
                   <div style={{ fontFamily: "var(--font-serif)", fontSize: 14 }}>{post.author.name}</div>
                 )}
-                <div className="post-meta">{formatDate(post.publishedAt)}</div>
+                <div className="post-meta">
+                  {formatDate(post.publishedAt)}
+                  {readingTime > 0 && (
+                    <>
+                      <span className="post-meta-sep">·</span>
+                      <span className="reading-time">{readingTime} min read</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -225,8 +271,6 @@ export default function PostPage({ post, relatedPosts }) {
             ⚠️ <strong style={{ color: 'var(--text2)' }}>Disclaimer:</strong> This article is for informational purposes only and does not constitute financial advice. Always do your own research before making investment decisions.
           </div>
 
-          {/* Related articles — appears at the bottom of the article body,
-              before the sidebar (which is to the right on desktop, below on mobile) */}
           {hasRelated && (
             <section className="related-posts">
               <div className="related-posts-header">
@@ -303,7 +347,6 @@ export async function getStaticProps({ params }) {
           currentId: post._id,
           category: post.category || '',
         })
-        // Use category matches if there are any, otherwise fall back to recent
         relatedPosts = (result?.byCategory?.length > 0)
           ? result.byCategory
           : (result?.fallback || [])
@@ -313,10 +356,7 @@ export async function getStaticProps({ params }) {
     }
 
     return {
-      props: {
-        post: post || null,
-        relatedPosts,
-      },
+      props: { post: post || null, relatedPosts },
       revalidate: 60,
     }
   } catch {
