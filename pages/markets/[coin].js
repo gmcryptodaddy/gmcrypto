@@ -1,4 +1,8 @@
 // pages/markets/[coin].js
+// Coin detail page. Uses ISR (Incremental Static Regeneration) — pages are
+// pre-rendered and revalidated every 5 minutes, giving crawlers reliable
+// fast responses while keeping prices reasonably fresh.
+
 import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -6,17 +10,20 @@ import dynamic from 'next/dynamic'
 import Navbar from '../../components/Navbar'
 import Ticker from '../../components/Ticker'
 import Footer from '../../components/Footer'
+import { CryptocurrencySchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
 import {
   getCoinDetails,
   getCoinTickers,
+  getCoinsMarkets,
   formatPrice,
   formatBigNumber,
   formatPercent,
   formatSupply,
 } from '../../lib/coingecko'
 
-// Load chart only on client — lightweight-charts needs window
+const SITE_URL = 'https://www.gmcrypto.news'
+
 const CoinChart = dynamic(() => import('../../components/CoinChart'), {
   ssr: false,
   loading: () => <div className="coin-chart-loading" style={{ height: 420 }}>Loading chart…</div>,
@@ -42,6 +49,43 @@ function timeAgo(dateStr) {
   return `${d}d ago`
 }
 
+// SEO-friendly meta description with live price + market data baked in.
+// Crawlers see this fresh on each ISR regen, signaling the page has fresh content.
+function buildMetaDescription(coin) {
+  const md = coin.market_data || {}
+  const price = md.current_price?.usd
+  const change = md.price_change_percentage_24h
+  const cap = md.market_cap?.usd
+  const rank = coin.market_cap_rank
+  const symbol = coin.symbol?.toUpperCase()
+  const name = coin.name
+
+  const parts = []
+  if (price) {
+    parts.push(`${name} (${symbol}) price today: ${formatPrice(price)} USD`)
+  } else {
+    parts.push(`${name} (${symbol}) live price, chart, and market cap`)
+  }
+  if (change != null) {
+    const sign = change >= 0 ? '+' : ''
+    parts.push(`${sign}${change.toFixed(2)}% (24h)`)
+  }
+  if (rank) parts.push(`Rank #${rank}`)
+  if (cap) parts.push(`market cap ${formatBigNumber(cap)}`)
+  return parts.join('. ') + '. Live charts, news, and analysis on GM Crypto News.'
+}
+
+function buildMetaTitle(coin) {
+  const md = coin.market_data || {}
+  const price = md.current_price?.usd
+  const symbol = coin.symbol?.toUpperCase()
+  const name = coin.name
+  if (price) {
+    return `${name} (${symbol}) Price: ${formatPrice(price)} USD — Live Chart & News | GM Crypto`
+  }
+  return `${name} (${symbol}) Price, Chart, Market Cap — GM Crypto News`
+}
+
 export default function CoinPage({ coin, tickers, relatedArticles }) {
   const [showFullAbout, setShowFullAbout] = useState(false)
 
@@ -50,6 +94,7 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
       <>
         <Head>
           <title>Coin not found — GM Crypto News</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Ticker />
         <Navbar />
@@ -90,22 +135,44 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   const github = coin.links?.repos_url?.github?.[0]
 
   const hasNews = relatedArticles && relatedArticles.length > 0
-  // For "View all <Coin> news" link — link to the matching footer category
-  // (e.g. "Bitcoin News", "Ethereum News") if it makes sense.
   const newsCategorySlug = `${coin.name} News`
+
+  const pageUrl = `${SITE_URL}/markets/${coin.id}`
+  const metaTitle = buildMetaTitle(coin)
+  const metaDescription = buildMetaDescription(coin)
+  const ogImage = coin.image?.large || `${SITE_URL}/og-image.png`
+
+  const breadcrumbItems = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Markets', url: `${SITE_URL}/markets` },
+    { name: coin.name, url: pageUrl },
+  ]
 
   return (
     <>
       <Head>
-        <title>{coin.name} ({coin.symbol?.toUpperCase()}) Price, Chart, Market Cap — GM Crypto News</title>
-        <meta name="description" content={`${coin.name} live price, chart, market cap, and trading volume. ${shortDesc.slice(0, 120)}`} />
-        <meta property="og:title" content={`${coin.name} (${coin.symbol?.toUpperCase()}) — GM Crypto News`} />
-        <meta property="og:description" content={shortDesc.slice(0, 200)} />
-        {coin.image?.large && (
-          <meta property="og:image" content={coin.image.large} />
-        )}
+        <title>{metaTitle}</title>
+        <meta name="description" content={metaDescription} />
+        <link rel="canonical" href={pageUrl} />
+
+        <meta property="og:title" content={metaTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:alt" content={`${coin.name} logo`} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="GM Crypto News" />
+        <meta property="og:locale" content="en_US" />
+
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={metaTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
+
+      <CryptocurrencySchema coin={coin} />
+      <BreadcrumbSchema items={breadcrumbItems} />
 
       <Ticker />
       <Navbar />
@@ -119,12 +186,11 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           <span>{coin.name}</span>
         </div>
 
-        {/* Header */}
         <section className="coin-header">
           <div className="coin-header-top">
             <div className="coin-header-identity">
               {coin.image?.large && (
-                <img src={coin.image.large} alt={coin.name} className="coin-header-img" />
+                <img src={coin.image.large} alt={`${coin.name} logo`} className="coin-header-img" />
               )}
               <div>
                 <div className="coin-header-rank">#{rank} • {coin.categories?.[0] || 'Coin'}</div>
@@ -137,19 +203,13 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
 
             <div className="coin-header-links">
               {homepage && (
-                <a href={homepage} target="_blank" rel="noopener noreferrer" className="coin-link-btn">
-                  Website ↗
-                </a>
+                <a href={homepage} target="_blank" rel="noopener noreferrer nofollow" className="coin-link-btn">Website ↗</a>
               )}
               {twitter && (
-                <a href={`https://twitter.com/${twitter}`} target="_blank" rel="noopener noreferrer" className="coin-link-btn">
-                  Twitter ↗
-                </a>
+                <a href={`https://twitter.com/${twitter}`} target="_blank" rel="noopener noreferrer nofollow" className="coin-link-btn">Twitter ↗</a>
               )}
               {github && (
-                <a href={github} target="_blank" rel="noopener noreferrer" className="coin-link-btn">
-                  GitHub ↗
-                </a>
+                <a href={github} target="_blank" rel="noopener noreferrer nofollow" className="coin-link-btn">GitHub ↗</a>
               )}
             </div>
           </div>
@@ -164,12 +224,10 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </div>
         </section>
 
-        {/* Chart */}
         <section className="coin-chart-section">
           <CoinChart coinId={coin.id} color="#FF6B00" />
         </section>
 
-        {/* Stats grid */}
         <section className="coin-stats-grid">
           <div className="coin-stat">
             <div className="coin-stat-label">Market Cap</div>
@@ -221,7 +279,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </div>
         </section>
 
-        {/* Latest News for this coin — between stats and about */}
         {hasNews && (
           <section className="coin-related">
             <div className="coin-related-header">
@@ -264,7 +321,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </section>
         )}
 
-        {/* About */}
         {description && (
           <section className="coin-about">
             <h2 className="coin-section-title">About {coin.name}</h2>
@@ -283,7 +339,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </section>
         )}
 
-        {/* Top exchanges / markets */}
         {tickers && tickers.length > 0 && (
           <section className="coin-exchanges">
             <h2 className="coin-section-title">Top {coin.symbol?.toUpperCase()} Markets</h2>
@@ -303,14 +358,8 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
                   {tickers.slice(0, 15).map((t, i) => (
                     <tr key={i}>
                       <td>{i + 1}</td>
-                      <td>
-                        {t.market?.name || '—'}
-                      </td>
-                      <td>
-                        <span className="coin-pair">
-                          {t.base}/{t.target}
-                        </span>
-                      </td>
+                      <td>{t.market?.name || '—'}</td>
+                      <td><span className="coin-pair">{t.base}/{t.target}</span></td>
                       <td className="right">{formatPrice(t.converted_last?.usd)}</td>
                       <td className="right">{formatBigNumber(t.converted_volume?.usd)}</td>
                       <td className="right">
@@ -330,27 +379,41 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   )
 }
 
-export async function getServerSideProps({ params }) {
+// --- ISR setup ---
+// Top 100 coins are pre-rendered at build time. Anything outside that gets
+// rendered on first request (fallback: 'blocking') and then cached.
+// Pages refresh every 5 minutes, giving crawlers reliable + reasonably fresh data.
+
+const TOP_COINS_TO_PREBUILD = [
+  'bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple',
+  'cardano', 'avalanche-2', 'dogecoin', 'tron', 'chainlink',
+  'polkadot', 'polygon', 'litecoin', 'shiba-inu', 'uniswap',
+]
+
+export async function getStaticPaths() {
+  return {
+    paths: TOP_COINS_TO_PREBUILD.map(coin => ({ params: { coin } })),
+    fallback: 'blocking',
+  }
+}
+
+export async function getStaticProps({ params }) {
   try {
     const [coin, tickersData] = await Promise.all([
       getCoinDetails(params.coin),
       getCoinTickers(params.coin).catch(() => null),
     ])
 
-    // Improved related-articles matching:
-    // Match articles where the coin's name OR symbol appears in:
-    //   - the title
-    //   - the category (e.g. "Bitcoin News")
-    //   - the excerpt
-    // Symbol matching uses word boundaries (* on either side) but is min 3 chars
-    // long to avoid matching tiny tickers like "ID" against random words.
-    const symbol = coin?.symbol?.toUpperCase()
-    const name = coin?.name
+    if (!coin) {
+      return { notFound: true, revalidate: 60 }
+    }
+
+    const symbol = coin.symbol?.toUpperCase()
+    const name = coin.name
     let relatedArticles = []
 
     try {
       if (name) {
-        // Build query parts dynamically — only include symbol matching if symbol is 3+ chars
         const useSymbol = symbol && symbol.length >= 3
         const query = useSymbol
           ? `*[_type == "post" && (
@@ -370,11 +433,11 @@ export async function getServerSideProps({ params }) {
               _id, title, slug, mainImage, category, publishedAt, excerpt
             }`
 
-        const params = useSymbol
+        const queryParams = useSymbol
           ? { name: `*${name}*`, symbol: `*${symbol}*` }
           : { name: `*${name}*` }
 
-        relatedArticles = await client.fetch(query, params)
+        relatedArticles = await client.fetch(query, queryParams)
       }
     } catch (err) {
       console.error('Related articles error:', err)
@@ -382,15 +445,19 @@ export async function getServerSideProps({ params }) {
 
     return {
       props: {
-        coin: coin || null,
+        coin,
         tickers: tickersData?.tickers || [],
         relatedArticles: relatedArticles || [],
       },
+      // Refresh every 5 minutes — fresh enough for prices, slow enough to
+      // keep CoinGecko happy and serve crawlers from cache instantly.
+      revalidate: 300,
     }
   } catch (error) {
     console.error('Coin page error:', error)
     return {
       props: { coin: null, tickers: [], relatedArticles: [] },
+      revalidate: 60,
     }
   }
 }
