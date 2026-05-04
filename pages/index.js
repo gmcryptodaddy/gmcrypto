@@ -1,467 +1,339 @@
-import { useState, useRef, useEffect, Fragment } from 'react'
+// pages/markets/index.js
+// Cryptocurrency prices table.
+//
+// Page 1 is statically generated with ISR (revalidate every 60s) — this means:
+//   - First-time visitors get instant cached HTML
+//   - Back button works perfectly (no failed re-fetches)
+//   - Refresh just shows cached data, fast
+//
+// Pages 2-10 are loaded client-side via /api/markets-list proxy, which has
+// its own 60s cache. Pagination doesn't trigger a full page reload anymore.
+
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
-import Navbar from '../components/Navbar'
-import Ticker from '../components/Ticker'
-import Sidebar from '../components/Sidebar'
-import Footer from '../components/Footer'
-import NewsFeed from '../components/NewsFeed'
-import AnalysisEmbed from '../components/AnalysisEmbed'
-import { WebsiteSchema } from '../components/StructuredData'
-import { client, urlFor } from '../lib/sanity'
-import { allPostsQuery } from '../lib/queries'
-import { generateHashtags } from '../lib/hashtags'
-import { getTelegramFeed } from '../lib/telegram'
+import Navbar from '../../components/Navbar'
+import Ticker from '../../components/Ticker'
+import Footer from '../../components/Footer'
+import Sparkline from '../../components/Sparkline'
+import {
+  getGlobalStats,
+  getCoinsMarkets,
+  formatPrice,
+  formatBigNumber,
+  formatPercent,
+} from '../../lib/coingecko'
 
-const SITE_URL = 'https://www.gmcrypto.news'
+const PER_PAGE = 100
+const TOTAL_PAGES = 10
 
-function timeAgo(dateStr) {
-  if (!dateStr) return 'recently'
-  const diff = (Date.now() - new Date(dateStr)) / 1000
-  if (diff < 60) return 'just now'
-  if (diff < 3600) {
-    const m = Math.floor(diff / 60)
-    return `${m} minute${m === 1 ? '' : 's'} ago`
-  }
-  if (diff < 86400) {
-    const h = Math.floor(diff / 3600)
-    return `${h} hour${h === 1 ? '' : 's'} ago`
-  }
-  const d = Math.floor(diff / 86400)
-  return `${d} day${d === 1 ? '' : 's'} ago`
-}
-
-const FILTERS = [
-  'All', 'News', 'Breaking News', 'Explainer', 'Markets',
-  'Companies', 'TradFi', 'Policy', 'DeFi', 'Tech', 'Web3', 'Security'
-]
-
-const POSTS_PER_PAGE = 10
-
-export default function Home({ posts, telegramPosts }) {
-  const allPosts = posts || []
+export default function MarketsPage({ initialGlobalStats, initialCoins }) {
   const router = useRouter()
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('market_cap_rank')
+  const [sortDir, setSortDir] = useState('asc')
 
-  const [activeFilter, setActiveFilter] = useState('All')
-  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
-  const scrollRef = useRef(null)
+  // Page state — read from URL ?page=N, default 1
+  const [page, setPage] = useState(1)
+  const [coins, setCoins] = useState(initialCoins || [])
+  const [globalStats, setGlobalStats] = useState(initialGlobalStats || null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(true)
-
+  // Read page from URL on mount + when query changes
   useEffect(() => {
     if (!router.isReady) return
-    const queryCat = router.query.category
-    if (typeof queryCat === 'string' && queryCat.trim()) {
-      setActiveFilter(queryCat)
-    } else {
-      setActiveFilter('All')
-    }
-  }, [router.isReady, router.query.category])
+    const urlPage = Math.max(1, Math.min(TOTAL_PAGES, parseInt(router.query.page) || 1))
+    setPage(urlPage)
+  }, [router.isReady, router.query.page])
 
+  // Fetch coins for current page (client-side, via our proxy)
+  // Page 1 already has initialCoins from getStaticProps, so skip the fetch.
   useEffect(() => {
-    setVisibleCount(POSTS_PER_PAGE)
-  }, [activeFilter])
+    if (page === 1 && initialCoins?.length > 0) {
+      setCoins(initialCoins)
+      return
+    }
 
+    let cancelled = false
+    const ac = new AbortController()
+    setLoading(true)
+    setError(null)
+
+    fetch(`/api/markets-list?page=${page}`, { signal: ac.signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load page ${page}`)
+        return res.json()
+      })
+      .then(data => {
+        if (cancelled) return
+        setCoins(Array.isArray(data) ? data : [])
+        setLoading(false)
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        if (cancelled) return
+        console.error('Markets fetch error:', err)
+        setError('Failed to load prices. Try refreshing.')
+        setLoading(false)
+      })
+
+    return () => { cancelled = true; ac.abort() }
+  }, [page, initialCoins])
+
+  // Always refresh global stats client-side every time the page mounts —
+  // ISR cache might be stale otherwise. Cheap call, single endpoint.
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const handleScroll = () => {
-      setCanScrollLeft(el.scrollLeft > 5)
-      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5)
-    }
-    handleScroll()
-    el.addEventListener('scroll', handleScroll)
-    window.addEventListener('resize', handleScroll)
-    return () => {
-      el.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', handleScroll)
-    }
+    let cancelled = false
+    fetch('/api/markets-global')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled && data) setGlobalStats(data)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
   }, [])
 
-  const updateFilter = (newFilter) => {
-    setActiveFilter(newFilter)
-    if (newFilter === 'All') {
-      router.push('/', undefined, { shallow: true, scroll: false })
+  const handleSort = (key) => {
+    if (sortBy === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     } else {
-      router.push(`/?category=${encodeURIComponent(newFilter)}`, undefined, { shallow: true, scroll: false })
+      setSortBy(key)
+      setSortDir(key === 'market_cap_rank' ? 'asc' : 'desc')
     }
   }
 
-  const filteredPosts = activeFilter === 'All'
-    ? allPosts
-    : allPosts.filter(p =>
-        p.category &&
-        p.category.toLowerCase() === activeFilter.toLowerCase()
-      )
+  const goToPage = useCallback((newPage) => {
+    const clamped = Math.max(1, Math.min(TOTAL_PAGES, newPage))
+    if (clamped === page) return
+    if (clamped === 1) {
+      router.push('/markets', undefined, { shallow: true, scroll: true })
+    } else {
+      router.push(`/markets?page=${clamped}`, undefined, { shallow: true, scroll: true })
+    }
+  }, [page, router])
 
-  const visiblePosts = filteredPosts.slice(0, visibleCount)
-  const hasMore = visibleCount < filteredPosts.length
-  const latestPosts = allPosts.slice(0, 15)
-
-  const scrollFilters = (dir) => {
-    if (!scrollRef.current) return
-    scrollRef.current.scrollBy({
-      left: dir === 'left' ? -200 : 200,
-      behavior: 'smooth'
+  const sortedCoins = useMemo(() => {
+    const filtered = (coins || []).filter(
+      (c) =>
+        !search ||
+        c.name?.toLowerCase().includes(search.toLowerCase()) ||
+        c.symbol?.toLowerCase().includes(search.toLowerCase())
+    )
+    const sorted = [...filtered].sort((a, b) => {
+      const av = a[sortBy] ?? 0
+      const bv = b[sortBy] ?? 0
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
     })
-  }
+    return sorted
+  }, [coins, search, sortBy, sortDir])
 
-  const handleLoadMore = () => {
-    setVisibleCount(prev => prev + POSTS_PER_PAGE)
-  }
-
-  const heroPost = visiblePosts[0] || null
-  const restPosts = visiblePosts.slice(1)
-
-  const isCategoryView = activeFilter !== 'All'
-  const pageTitle = isCategoryView
-    ? `${activeFilter} — GM Crypto News`
-    : 'GM Crypto News — Daily Crypto News, Markets & Analysis'
-  const pageDescription = isCategoryView
-    ? `Latest ${activeFilter} news, analysis, and updates on GM Crypto News. No hype. Just signal.`
-    : 'Daily crypto news, market analysis, and blockchain insights. Live prices for 1000+ coins, top movers, and analysis. No hype. Just signal.'
+  const marketCap = globalStats?.total_market_cap?.usd
+  const volume = globalStats?.total_volume?.usd
+  const btcDom = globalStats?.market_cap_percentage?.btc
+  const capChange = globalStats?.market_cap_change_percentage_24h_usd
 
   return (
     <>
       <Head>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} />
-
-        {/* Canonical always points to homepage root, even when filtered.
-            Filtered views are duplicate content from Google's perspective. */}
-        <link rel="canonical" href={SITE_URL} />
-
-        {/* Filtered views (e.g. /?category=Bitcoin News) shouldn't be indexed
-            as separate pages — they're the same article set, just filtered.
-            But "follow" so link authority still flows through. */}
-        {isCategoryView && (
-          <meta name="robots" content="noindex, follow" />
-        )}
-
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDescription} />
-        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="GM Crypto News" />
-        <meta property="og:url" content={SITE_URL} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="GM Crypto News" />
-        <meta property="og:locale" content="en_US" />
-
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={pageDescription} />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
-        <meta name="twitter:site" content="@gm_cryptonews" />
+        <title>Crypto Prices & Markets — GM Crypto News</title>
+        <meta name="description" content="Live crypto prices, market caps, trading volumes, and charts. Top 1000 cryptocurrencies, updated every minute." />
       </Head>
-
-      {/* WebSite schema only on the canonical homepage view */}
-      {!isCategoryView && <WebsiteSchema />}
 
       <Ticker />
       <Navbar />
 
-      <div className="home-layout">
-        <aside className="latest-feed">
-          <div className="feed-header">
-            <span className="feed-dot" />
-            <span className="feed-title">Latest news</span>
+      <div className="markets-page">
+        <section className="markets-hero">
+          <div className="markets-hero-title">
+            <h1>Cryptocurrency Prices</h1>
+            <span className="markets-attribution">Data by CoinGecko</span>
           </div>
-          <div className="feed-list">
-            {latestPosts.length > 0 ? latestPosts.map(post => (
-              <Link key={post._id} href={`/post/${post.slug.current}`} className="feed-item">
-                <div className="feed-item-meta">
-                  <div className="feed-item-tags">
-                    {post.category && <span className="feed-category">{post.category}</span>}
-                  </div>
-                  <span className="feed-time">{timeAgo(post.publishedAt)}</span>
-                </div>
-                <h3 className="feed-item-title">{post.title}</h3>
-              </Link>
-            )) : (
-              <div className="feed-empty">
-                Publish your first article in Sanity Studio — it'll appear here.
-              </div>
+
+          <p className="markets-hero-sub">
+            The global crypto market cap today is{' '}
+            <strong>{formatBigNumber(marketCap)}</strong>
+            {capChange != null && (
+              <>
+                , a{' '}
+                <span className={capChange >= 0 ? 'up' : 'down'}>
+                  {formatPercent(capChange)}
+                </span>{' '}
+                change in the last 24 hours.
+              </>
             )}
-          </div>
-        </aside>
+          </p>
 
-        <main className="center-col">
-          <NewsFeed posts={telegramPosts} />
-
-          <div className="filter-bar">
-            <button
-              className="filter-arrow"
-              onClick={() => scrollFilters('left')}
-              aria-label="Scroll filters left"
-              data-hidden={!canScrollLeft}
-            >
-              <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <div className="filter-scroll-wrap" ref={scrollRef}>
-              <div className="filter-scroll-inner">
-                {FILTERS.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => updateFilter(f)}
-                    className={`filter-pill ${activeFilter === f ? 'filter-pill-active' : ''}`}
-                  >
-                    {f}
-                  </button>
-                ))}
-                {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
-                  <button
-                    onClick={() => updateFilter(activeFilter)}
-                    className="filter-pill filter-pill-active"
-                  >
-                    {activeFilter}
-                  </button>
-                )}
-              </div>
-            </div>
-            <button
-              className="filter-arrow"
-              onClick={() => scrollFilters('right')}
-              aria-label="Scroll filters right"
-              data-hidden={!canScrollRight}
-            >
-              <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-
-          <div className="filter-bar-mobile">
-            <label className="filter-dropdown-label">Category</label>
-            <div className="filter-dropdown-wrap">
-              <select
-                className="filter-dropdown"
-                value={FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) ? activeFilter : 'All'}
-                onChange={(e) => updateFilter(e.target.value)}
-              >
-                {FILTERS.map(f => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-                {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
-                  <option value={activeFilter}>{activeFilter}</option>
-                )}
-              </select>
-              <svg className="filter-dropdown-caret" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
-
-          {visiblePosts.length > 0 ? (
-            <>
-              <div className="article-list">
-                {visiblePosts.map((post, idx) => {
-                  const hashtags = generateHashtags(post.title, post.category, 3)
-                  return (
-                    <Fragment key={post._id}>
-                      <article className="article-item">
-                        <Link href={`/post/${post.slug.current}`}>
-                          {post.mainImage ? (
-                            <img
-                              src={urlFor(post.mainImage).width(900).height(500).url()}
-                              alt={post.title}
-                              className="article-item-img"
-                            />
-                          ) : (
-                            <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
-                          )}
-                        </Link>
-
-                        <div className="article-item-meta">
-                          <div className="article-item-author">
-                            {post.author?.image && (
-                              <img
-                                src={urlFor(post.author.image).width(60).height(60).url()}
-                                alt={post.author.name}
-                                className="article-item-avatar"
-                              />
-                            )}
-                            {post.author?.name && (
-                              <span className="article-item-author-name">{post.author.name}</span>
-                            )}
-                          </div>
-                          <div className="article-item-tags">
-                            {post.category && <span className="article-item-tag">{post.category}</span>}
-                          </div>
-                        </div>
-
-                        <Link href={`/post/${post.slug.current}`}>
-                          <h2 className="article-item-title">{post.title}</h2>
-                        </Link>
-
-                        {post.excerpt && (
-                          <p className="article-item-excerpt">{post.excerpt}</p>
-                        )}
-
-                        {hashtags.length > 0 && (
-                          <div className="article-item-hashtags">
-                            {hashtags.map(tag => (
-                              <span key={tag} className="article-hashtag">{tag}</span>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="article-item-footer">
-                          <Link href={`/post/${post.slug.current}`} className="article-read-btn">
-                            Read
-                          </Link>
-                          <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
-                        </div>
-                      </article>
-
-                      {(idx === 2 || (visiblePosts.length < 3 && idx === visiblePosts.length - 1)) && <AnalysisEmbed />}
-                    </Fragment>
-                  )
-                })}
-              </div>
-
-              <div className="article-list-mobile">
-                {heroPost && (() => {
-                  const heroHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
-                  return (
-                    <article className="mobile-hero-article">
-                      <Link href={`/post/${heroPost.slug.current}`}>
-                        {heroPost.mainImage ? (
-                          <img
-                            src={urlFor(heroPost.mainImage).width(800).height(450).url()}
-                            alt={heroPost.title}
-                            className="mobile-hero-img"
-                          />
-                        ) : (
-                          <div className="mobile-hero-img img-placeholder">[ no image ]</div>
-                        )}
-                      </Link>
-                      <div className="mobile-hero-body">
-                        <div className="mobile-hero-meta">
-                          {heroPost.category && (
-                            <span className="mobile-hero-cat">{heroPost.category}</span>
-                          )}
-                          <span className="mobile-hero-time">{timeAgo(heroPost.publishedAt)}</span>
-                        </div>
-                        <Link href={`/post/${heroPost.slug.current}`}>
-                          <h2 className="mobile-hero-title">{heroPost.title}</h2>
-                        </Link>
-                        {heroPost.excerpt && (
-                          <p className="mobile-hero-excerpt">{heroPost.excerpt}</p>
-                        )}
-                        {heroHashtags.length > 0 && (
-                          <div className="mobile-hero-hashtags">
-                            {heroHashtags.map(tag => (
-                              <span key={tag} className="article-hashtag">{tag}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  )
-                })()}
-
-                {restPosts.length > 0 && (
-                  <div className="mobile-article-list">
-                    {restPosts.map(post => (
-                      <Link
-                        key={post._id}
-                        href={`/post/${post.slug.current}`}
-                        className="mobile-article-row"
-                      >
-                        {post.mainImage ? (
-                          <img
-                            src={urlFor(post.mainImage).width(240).height(240).url()}
-                            alt={post.title}
-                            className="mobile-article-thumb"
-                          />
-                        ) : (
-                          <div className="mobile-article-thumb img-placeholder">—</div>
-                        )}
-                        <div className="mobile-article-text">
-                          <div className="mobile-article-meta">
-                            {post.category && (
-                              <span className="mobile-article-cat">{post.category}</span>
-                            )}
-                          </div>
-                          <h3 className="mobile-article-title">{post.title}</h3>
-                          <div className="mobile-article-time">{timeAgo(post.publishedAt)}</div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {hasMore && (
-                <div className="load-more-wrap">
-                  <button className="load-more-btn" onClick={handleLoadMore}>
-                    Load more
-                  </button>
-                  <span className="load-more-count">
-                    Showing {visiblePosts.length} of {filteredPosts.length}
-                  </span>
+          <div className="markets-stats-grid">
+            <div className="markets-stat-card">
+              <div className="markets-stat-label">Total Market Cap</div>
+              <div className="markets-stat-value">{formatBigNumber(marketCap)}</div>
+              {capChange != null && (
+                <div className={`markets-stat-change ${capChange >= 0 ? 'up' : 'down'}`}>
+                  {formatPercent(capChange)}
                 </div>
               )}
-            </>
-          ) : (
-            <div className="filter-empty">
-              <div className="filter-empty-emoji">
-                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#FF6B00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <ellipse cx="50" cy="55" rx="32" ry="28" />
-                  <circle cx="32" cy="28" r="11" />
-                  <circle cx="68" cy="28" r="11" />
-                  <circle cx="32" cy="28" r="3" fill="#FF6B00" />
-                  <circle cx="68" cy="28" r="3" fill="#FF6B00" />
-                  <path d="M 32 62 Q 50 74 68 62" />
-                  <circle cx="26" cy="58" r="1.5" fill="#FF6B00" />
-                  <circle cx="74" cy="58" r="1.5" fill="#FF6B00" />
-                </svg>
-              </div>
-              <div className="filter-empty-text">Let us cook</div>
-              <div className="filter-empty-sub">
-                No articles in "{activeFilter}" yet — check back soon.
+            </div>
+            <div className="markets-stat-card">
+              <div className="markets-stat-label">24h Volume</div>
+              <div className="markets-stat-value">{formatBigNumber(volume)}</div>
+            </div>
+            <div className="markets-stat-card">
+              <div className="markets-stat-label">BTC Dominance</div>
+              <div className="markets-stat-value">
+                {btcDom != null ? btcDom.toFixed(2) + '%' : '—'}
               </div>
             </div>
-          )}
-
-          <div className="mobile-sidebar-wrap">
-            <Sidebar />
+            <div className="markets-stat-card">
+              <div className="markets-stat-label">Active Cryptos</div>
+              <div className="markets-stat-value">
+                {globalStats?.active_cryptocurrencies?.toLocaleString() || '—'}
+              </div>
+            </div>
           </div>
-        </main>
+        </section>
 
-        <aside className="home-sidebar">
-          <Sidebar />
-        </aside>
+        <div className="markets-controls">
+          <input
+            type="text"
+            className="markets-search"
+            placeholder="Search coin or symbol…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="markets-page-info">
+            Page {page} of {TOTAL_PAGES}
+          </div>
+        </div>
+
+        {error && (
+          <div style={{
+            padding: '16px',
+            margin: '16px 0',
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            textAlign: 'center',
+            color: 'var(--red)',
+            fontSize: 13,
+          }}>
+            {error}
+          </div>
+        )}
+
+        <div className="markets-table-wrap" style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s' }}>
+          <table className="markets-table">
+            <thead>
+              <tr>
+                <th onClick={() => handleSort('market_cap_rank')} className="sortable">#</th>
+                <th className="coin-col">Coin</th>
+                <th onClick={() => handleSort('current_price')} className="sortable right">Price</th>
+                <th onClick={() => handleSort('price_change_percentage_1h_in_currency')} className="sortable right">1h</th>
+                <th onClick={() => handleSort('price_change_percentage_24h_in_currency')} className="sortable right">24h</th>
+                <th onClick={() => handleSort('price_change_percentage_7d_in_currency')} className="sortable right">7d</th>
+                <th onClick={() => handleSort('total_volume')} className="sortable right">Volume (24h)</th>
+                <th onClick={() => handleSort('market_cap')} className="sortable right">Market Cap</th>
+                <th className="right">Last 7 days</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCoins.map((coin) => {
+                const sparkData = coin.sparkline_in_7d?.price || []
+                const sparkPositive =
+                  sparkData.length > 1 && sparkData[sparkData.length - 1] >= sparkData[0]
+                return (
+                  <tr key={coin.id}>
+                    <td className="rank">{coin.market_cap_rank || '—'}</td>
+                    <td>
+                      <Link href={`/markets/${coin.id}`} className="coin-link">
+                        <img src={coin.image} alt={coin.name} className="coin-img" />
+                        <div className="coin-name-wrap">
+                          <span className="coin-name">{coin.name}</span>
+                          <span className="coin-symbol">{coin.symbol?.toUpperCase()}</span>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="right price">{formatPrice(coin.current_price)}</td>
+                    <td className={`right ${coin.price_change_percentage_1h_in_currency >= 0 ? 'up' : 'down'}`}>
+                      {formatPercent(coin.price_change_percentage_1h_in_currency)}
+                    </td>
+                    <td className={`right ${coin.price_change_percentage_24h_in_currency >= 0 ? 'up' : 'down'}`}>
+                      {formatPercent(coin.price_change_percentage_24h_in_currency)}
+                    </td>
+                    <td className={`right ${coin.price_change_percentage_7d_in_currency >= 0 ? 'up' : 'down'}`}>
+                      {formatPercent(coin.price_change_percentage_7d_in_currency)}
+                    </td>
+                    <td className="right">{formatBigNumber(coin.total_volume)}</td>
+                    <td className="right">{formatBigNumber(coin.market_cap)}</td>
+                    <td className="right spark-cell">
+                      <Sparkline data={sparkData} positive={sparkPositive} />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination — uses buttons + shallow routing instead of <Link> for full reload.
+            This keeps page state client-side and prevents the back-button bug. */}
+        <div className="markets-pagination">
+          {page > 1 && (
+            <button
+              type="button"
+              className="pagination-btn"
+              onClick={() => goToPage(page - 1)}
+              disabled={loading}
+            >
+              ← Previous
+            </button>
+          )}
+          <span className="pagination-info">
+            Page {page} of {TOTAL_PAGES}
+          </span>
+          {page < TOTAL_PAGES && (
+            <button
+              type="button"
+              className="pagination-btn"
+              onClick={() => goToPage(page + 1)}
+              disabled={loading}
+            >
+              Next →
+            </button>
+          )}
+        </div>
+
+        <Footer />
       </div>
-
-      <Footer />
     </>
   )
 }
 
+// ISR: page 1 is statically generated, refreshed every 60s in the background.
+// Pages 2-10 are loaded client-side via /api/markets-list (also cached).
 export async function getStaticProps() {
   try {
-    const [posts, telegramPosts] = await Promise.all([
-      client.fetch(allPostsQuery),
-      getTelegramFeed(),
+    const [globalStats, coins] = await Promise.all([
+      getGlobalStats().catch(() => null),
+      getCoinsMarkets({ page: 1, perPage: PER_PAGE }).catch(() => []),
     ])
     return {
       props: {
-        posts: posts || [],
-        telegramPosts: telegramPosts || [],
+        initialGlobalStats: globalStats || null,
+        initialCoins: coins || [],
       },
-      revalidate: 300,
+      revalidate: 60,
     }
   } catch (error) {
-    console.error('Homepage data error:', error)
+    console.error('Markets page build error:', error)
     return {
-      props: { posts: [], telegramPosts: [] },
+      props: {
+        initialGlobalStats: null,
+        initialCoins: [],
+      },
       revalidate: 60,
     }
   }
