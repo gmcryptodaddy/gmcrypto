@@ -4,8 +4,10 @@
 User-agent: *
 Allow: /
 
-# Block crawling of API routes — they're for the site's own use, not for indexing
+# Block crawling of API routes and dynamic-only filtered URLs
+# (filtered homepage URLs use canonical/noindex tags so they don't dilute SEO)
 Disallow: /api/
 
-# Sitemap location — Google, Bing etc. will discover this automatically
+# Sitemap locations
 Sitemap: https://www.gmcrypto.news/sitemap.xml
+Sitemap: https://www.gmcrypto.news/sitemap-news.xml
