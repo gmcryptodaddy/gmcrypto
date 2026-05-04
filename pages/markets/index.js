@@ -1,5 +1,10 @@
 // pages/markets/index.js
-import { useState, useMemo } from 'react'
+// Cryptocurrency prices table.
+// Page 1 is statically generated with ISR (revalidate every 60s).
+// Pages 2-10 are loaded client-side via /api/markets-list proxy.
+
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import Navbar from '../../components/Navbar'
@@ -15,11 +20,68 @@ import {
 } from '../../lib/coingecko'
 
 const PER_PAGE = 100
+const TOTAL_PAGES = 10
 
-export default function MarketsPage({ globalStats, coins, page, totalPages }) {
+export default function MarketsPage({ initialGlobalStats, initialCoins }) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('market_cap_rank')
   const [sortDir, setSortDir] = useState('asc')
+
+  const [page, setPage] = useState(1)
+  const [coins, setCoins] = useState(initialCoins || [])
+  const [globalStats, setGlobalStats] = useState(initialGlobalStats || null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!router.isReady) return
+    const urlPage = Math.max(1, Math.min(TOTAL_PAGES, parseInt(router.query.page) || 1))
+    setPage(urlPage)
+  }, [router.isReady, router.query.page])
+
+  useEffect(() => {
+    if (page === 1 && initialCoins?.length > 0) {
+      setCoins(initialCoins)
+      return
+    }
+
+    let cancelled = false
+    const ac = new AbortController()
+    setLoading(true)
+    setError(null)
+
+    fetch(`/api/markets-list?page=${page}`, { signal: ac.signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load page ${page}`)
+        return res.json()
+      })
+      .then(data => {
+        if (cancelled) return
+        setCoins(Array.isArray(data) ? data : [])
+        setLoading(false)
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        if (cancelled) return
+        console.error('Markets fetch error:', err)
+        setError('Failed to load prices. Try refreshing.')
+        setLoading(false)
+      })
+
+    return () => { cancelled = true; ac.abort() }
+  }, [page, initialCoins])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/markets-global')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled && data) setGlobalStats(data)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   const handleSort = (key) => {
     if (sortBy === key) {
@@ -30,12 +92,22 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
     }
   }
 
+  const goToPage = useCallback((newPage) => {
+    const clamped = Math.max(1, Math.min(TOTAL_PAGES, newPage))
+    if (clamped === page) return
+    if (clamped === 1) {
+      router.push('/markets', undefined, { shallow: true, scroll: true })
+    } else {
+      router.push(`/markets?page=${clamped}`, undefined, { shallow: true, scroll: true })
+    }
+  }, [page, router])
+
   const sortedCoins = useMemo(() => {
-    const filtered = coins.filter(
+    const filtered = (coins || []).filter(
       (c) =>
         !search ||
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.symbol.toLowerCase().includes(search.toLowerCase())
+        c.name?.toLowerCase().includes(search.toLowerCase()) ||
+        c.symbol?.toLowerCase().includes(search.toLowerCase())
     )
     const sorted = [...filtered].sort((a, b) => {
       const av = a[sortBy] ?? 0
@@ -63,7 +135,6 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
       <Navbar />
 
       <div className="markets-page">
-        {/* Hero stats */}
         <section className="markets-hero">
           <div className="markets-hero-title">
             <h1>Cryptocurrency Prices</h1>
@@ -113,7 +184,6 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
           </div>
         </section>
 
-        {/* Search */}
         <div className="markets-controls">
           <input
             type="text"
@@ -123,46 +193,37 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
             onChange={(e) => setSearch(e.target.value)}
           />
           <div className="markets-page-info">
-            Page {page} of {totalPages}
+            Page {page} of {TOTAL_PAGES}
           </div>
         </div>
 
-        {/* Table */}
-        <div className="markets-table-wrap">
+        {error && (
+          <div style={{
+            padding: '16px',
+            margin: '16px 0',
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            textAlign: 'center',
+            color: 'var(--red)',
+            fontSize: 13,
+          }}>
+            {error}
+          </div>
+        )}
+
+        <div className="markets-table-wrap" style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s' }}>
           <table className="markets-table">
             <thead>
               <tr>
-                <th onClick={() => handleSort('market_cap_rank')} className="sortable">
-                  #
-                </th>
+                <th onClick={() => handleSort('market_cap_rank')} className="sortable">#</th>
                 <th className="coin-col">Coin</th>
-                <th onClick={() => handleSort('current_price')} className="sortable right">
-                  Price
-                </th>
-                <th
-                  onClick={() => handleSort('price_change_percentage_1h_in_currency')}
-                  className="sortable right"
-                >
-                  1h
-                </th>
-                <th
-                  onClick={() => handleSort('price_change_percentage_24h_in_currency')}
-                  className="sortable right"
-                >
-                  24h
-                </th>
-                <th
-                  onClick={() => handleSort('price_change_percentage_7d_in_currency')}
-                  className="sortable right"
-                >
-                  7d
-                </th>
-                <th onClick={() => handleSort('total_volume')} className="sortable right">
-                  Volume (24h)
-                </th>
-                <th onClick={() => handleSort('market_cap')} className="sortable right">
-                  Market Cap
-                </th>
+                <th onClick={() => handleSort('current_price')} className="sortable right">Price</th>
+                <th onClick={() => handleSort('price_change_percentage_1h_in_currency')} className="sortable right">1h</th>
+                <th onClick={() => handleSort('price_change_percentage_24h_in_currency')} className="sortable right">24h</th>
+                <th onClick={() => handleSort('price_change_percentage_7d_in_currency')} className="sortable right">7d</th>
+                <th onClick={() => handleSort('total_volume')} className="sortable right">Volume (24h)</th>
+                <th onClick={() => handleSort('market_cap')} className="sortable right">Market Cap</th>
                 <th className="right">Last 7 days</th>
               </tr>
             </thead>
@@ -184,25 +245,13 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
                       </Link>
                     </td>
                     <td className="right price">{formatPrice(coin.current_price)}</td>
-                    <td
-                      className={`right ${
-                        coin.price_change_percentage_1h_in_currency >= 0 ? 'up' : 'down'
-                      }`}
-                    >
+                    <td className={`right ${coin.price_change_percentage_1h_in_currency >= 0 ? 'up' : 'down'}`}>
                       {formatPercent(coin.price_change_percentage_1h_in_currency)}
                     </td>
-                    <td
-                      className={`right ${
-                        coin.price_change_percentage_24h_in_currency >= 0 ? 'up' : 'down'
-                      }`}
-                    >
+                    <td className={`right ${coin.price_change_percentage_24h_in_currency >= 0 ? 'up' : 'down'}`}>
                       {formatPercent(coin.price_change_percentage_24h_in_currency)}
                     </td>
-                    <td
-                      className={`right ${
-                        coin.price_change_percentage_7d_in_currency >= 0 ? 'up' : 'down'
-                      }`}
-                    >
+                    <td className={`right ${coin.price_change_percentage_7d_in_currency >= 0 ? 'up' : 'down'}`}>
                       {formatPercent(coin.price_change_percentage_7d_in_currency)}
                     </td>
                     <td className="right">{formatBigNumber(coin.total_volume)}</td>
@@ -217,20 +266,29 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="markets-pagination">
           {page > 1 && (
-            <Link href={`/markets?page=${page - 1}`} className="pagination-btn">
+            <button
+              type="button"
+              className="pagination-btn"
+              onClick={() => goToPage(page - 1)}
+              disabled={loading}
+            >
               ← Previous
-            </Link>
+            </button>
           )}
           <span className="pagination-info">
-            Page {page} of {totalPages}
+            Page {page} of {TOTAL_PAGES}
           </span>
-          {page < totalPages && (
-            <Link href={`/markets?page=${page + 1}`} className="pagination-btn">
+          {page < TOTAL_PAGES && (
+            <button
+              type="button"
+              className="pagination-btn"
+              onClick={() => goToPage(page + 1)}
+              disabled={loading}
+            >
               Next →
-            </Link>
+            </button>
           )}
         </div>
 
@@ -240,30 +298,27 @@ export default function MarketsPage({ globalStats, coins, page, totalPages }) {
   )
 }
 
-export async function getServerSideProps({ query }) {
-  const page = Math.max(1, Math.min(10, parseInt(query.page) || 1))
+export async function getStaticProps() {
   try {
     const [globalStats, coins] = await Promise.all([
-      getGlobalStats(),
-      getCoinsMarkets({ page, perPage: PER_PAGE }),
+      getGlobalStats().catch(() => null),
+      getCoinsMarkets({ page: 1, perPage: PER_PAGE }).catch(() => []),
     ])
     return {
       props: {
-        globalStats: globalStats || null,
-        coins: coins || [],
-        page,
-        totalPages: 10,
+        initialGlobalStats: globalStats || null,
+        initialCoins: coins || [],
       },
+      revalidate: 60,
     }
   } catch (error) {
-    console.error('Markets page error:', error)
+    console.error('Markets page build error:', error)
     return {
       props: {
-        globalStats: null,
-        coins: [],
-        page,
-        totalPages: 10,
+        initialGlobalStats: null,
+        initialCoins: [],
       },
+      revalidate: 60,
     }
   }
 }
