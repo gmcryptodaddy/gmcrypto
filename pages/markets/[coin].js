@@ -27,6 +27,21 @@ function stripHtml(html) {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
 
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const diff = (Date.now() - new Date(dateStr)) / 1000
+  if (diff < 3600) {
+    const m = Math.floor(diff / 60)
+    return `${m}m ago`
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff / 3600)
+    return `${h}h ago`
+  }
+  const d = Math.floor(diff / 86400)
+  return `${d}d ago`
+}
+
 export default function CoinPage({ coin, tickers, relatedArticles }) {
   const [showFullAbout, setShowFullAbout] = useState(false)
 
@@ -58,10 +73,8 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   const volume = md.total_volume?.usd
   const ath = md.ath?.usd
   const athChange = md.ath_change_percentage?.usd
-  const athDate = md.ath_date?.usd
   const atl = md.atl?.usd
   const atlChange = md.atl_change_percentage?.usd
-  const atlDate = md.atl_date?.usd
   const circSupply = md.circulating_supply
   const totalSupply = md.total_supply
   const maxSupply = md.max_supply
@@ -75,6 +88,11 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   const twitter = coin.links?.twitter_screen_name
   const reddit = coin.links?.subreddit_url
   const github = coin.links?.repos_url?.github?.[0]
+
+  const hasNews = relatedArticles && relatedArticles.length > 0
+  // For "View all <Coin> news" link — link to the matching footer category
+  // (e.g. "Bitcoin News", "Ethereum News") if it makes sense.
+  const newsCategorySlug = `${coin.name} News`
 
   return (
     <>
@@ -93,7 +111,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
       <Navbar />
 
       <div className="coin-page">
-        {/* Breadcrumbs */}
         <div className="coin-breadcrumbs">
           <Link href="/">Home</Link>
           <span className="sep">/</span>
@@ -204,29 +221,18 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
           </div>
         </section>
 
-        {/* About */}
-        {description && (
-          <section className="coin-about">
-            <h2 className="coin-section-title">About {coin.name}</h2>
-            <p className="coin-about-text">
-              {showFullAbout ? description : shortDesc}
-              {hasMore && !showFullAbout && '…'}
-            </p>
-            {hasMore && (
-              <button
-                className="coin-about-toggle"
-                onClick={() => setShowFullAbout(!showFullAbout)}
-              >
-                {showFullAbout ? 'Show less' : 'Read more'}
-              </button>
-            )}
-          </section>
-        )}
-
-        {/* Related articles */}
-        {relatedArticles && relatedArticles.length > 0 && (
+        {/* Latest News for this coin — between stats and about */}
+        {hasNews && (
           <section className="coin-related">
-            <h2 className="coin-section-title">Latest {coin.name} News</h2>
+            <div className="coin-related-header">
+              <h2 className="coin-section-title">Latest {coin.name} News</h2>
+              <Link
+                href={`/?category=${encodeURIComponent(newsCategorySlug)}`}
+                className="coin-related-more"
+              >
+                View all →
+              </Link>
+            </div>
             <div className="coin-related-grid">
               {relatedArticles.map((post) => (
                 <Link
@@ -250,10 +256,30 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
                       <span className="coin-related-tag">{post.category}</span>
                     )}
                     <h3>{post.title}</h3>
+                    <span className="coin-related-time">{timeAgo(post.publishedAt)}</span>
                   </div>
                 </Link>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* About */}
+        {description && (
+          <section className="coin-about">
+            <h2 className="coin-section-title">About {coin.name}</h2>
+            <p className="coin-about-text">
+              {showFullAbout ? description : shortDesc}
+              {hasMore && !showFullAbout && '…'}
+            </p>
+            {hasMore && (
+              <button
+                className="coin-about-toggle"
+                onClick={() => setShowFullAbout(!showFullAbout)}
+              >
+                {showFullAbout ? 'Show less' : 'Read more'}
+              </button>
+            )}
           </section>
         )}
 
@@ -311,25 +337,44 @@ export async function getServerSideProps({ params }) {
       getCoinTickers(params.coin).catch(() => null),
     ])
 
-    // Fetch related articles from Sanity — match by category or symbol
+    // Improved related-articles matching:
+    // Match articles where the coin's name OR symbol appears in:
+    //   - the title
+    //   - the category (e.g. "Bitcoin News")
+    //   - the excerpt
+    // Symbol matching uses word boundaries (* on either side) but is min 3 chars
+    // long to avoid matching tiny tickers like "ID" against random words.
     const symbol = coin?.symbol?.toUpperCase()
     const name = coin?.name
     let relatedArticles = []
 
     try {
-      if (symbol || name) {
-        const query = `*[_type == "post" && (
-          category match $symbol ||
-          category match $name ||
-          title match $symbol ||
-          title match $name
-        )] | order(publishedAt desc)[0...6] {
-          _id, title, slug, mainImage, category, publishedAt, excerpt
-        }`
-        relatedArticles = await client.fetch(query, {
-          symbol: `*${symbol}*`,
-          name: `*${name}*`,
-        })
+      if (name) {
+        // Build query parts dynamically — only include symbol matching if symbol is 3+ chars
+        const useSymbol = symbol && symbol.length >= 3
+        const query = useSymbol
+          ? `*[_type == "post" && (
+              title match $name ||
+              title match $symbol ||
+              category match $name ||
+              category match $symbol ||
+              excerpt match $name
+            )] | order(publishedAt desc)[0...4] {
+              _id, title, slug, mainImage, category, publishedAt, excerpt
+            }`
+          : `*[_type == "post" && (
+              title match $name ||
+              category match $name ||
+              excerpt match $name
+            )] | order(publishedAt desc)[0...4] {
+              _id, title, slug, mainImage, category, publishedAt, excerpt
+            }`
+
+        const params = useSymbol
+          ? { name: `*${name}*`, symbol: `*${symbol}*` }
+          : { name: `*${name}*` }
+
+        relatedArticles = await client.fetch(query, params)
       }
     } catch (err) {
       console.error('Related articles error:', err)
