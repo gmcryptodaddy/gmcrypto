@@ -8,10 +8,13 @@ import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import NewsFeed from '../components/NewsFeed'
 import AnalysisEmbed from '../components/AnalysisEmbed'
+import { WebsiteSchema } from '../components/StructuredData'
 import { client, urlFor } from '../lib/sanity'
 import { allPostsQuery } from '../lib/queries'
 import { generateHashtags } from '../lib/hashtags'
 import { getTelegramFeed } from '../lib/telegram'
+
+const SITE_URL = 'https://www.gmcrypto.news'
 
 function timeAgo(dateStr) {
   if (!dateStr) return 'recently'
@@ -47,7 +50,6 @@ export default function Home({ posts, telegramPosts }) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
-  // Sync filter with ?category= URL param (initial load + browser back/forward)
   useEffect(() => {
     if (!router.isReady) return
     const queryCat = router.query.category
@@ -58,7 +60,6 @@ export default function Home({ posts, telegramPosts }) {
     }
   }, [router.isReady, router.query.category])
 
-  // Reset pagination when filter changes
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
   }, [activeFilter])
@@ -79,7 +80,6 @@ export default function Home({ posts, telegramPosts }) {
     }
   }, [])
 
-  // Update filter + URL together. Shallow routing keeps the page mounted (no refetch).
   const updateFilter = (newFilter) => {
     setActiveFilter(newFilter)
     if (newFilter === 'All') {
@@ -115,14 +115,13 @@ export default function Home({ posts, telegramPosts }) {
   const heroPost = visiblePosts[0] || null
   const restPosts = visiblePosts.slice(1)
 
-  // SEO: dynamic title/description when a category is active
   const isCategoryView = activeFilter !== 'All'
   const pageTitle = isCategoryView
     ? `${activeFilter} — GM Crypto News`
-    : 'GM Crypto News'
+    : 'GM Crypto News — Daily Crypto News, Markets & Analysis'
   const pageDescription = isCategoryView
     ? `Latest ${activeFilter} news, analysis, and updates on GM Crypto News. No hype. Just signal.`
-    : 'Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal.'
+    : 'Daily crypto news, market analysis, and blockchain insights. Live prices for 1000+ coins, top movers, and analysis. No hype. Just signal.'
 
   return (
     <>
@@ -130,27 +129,42 @@ export default function Home({ posts, telegramPosts }) {
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
 
+        {/* Canonical always points to homepage root, even when filtered.
+            Filtered views are duplicate content from Google's perspective. */}
+        <link rel="canonical" href={SITE_URL} />
+
+        {/* Filtered views (e.g. /?category=Bitcoin News) shouldn't be indexed
+            as separate pages — they're the same article set, just filtered.
+            But "follow" so link authority still flows through. */}
+        {isCategoryView && (
+          <meta name="robots" content="noindex, follow" />
+        )}
+
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
-        <meta property="og:image" content="https://www.gmcrypto.news/og-image.png" />
+        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:url" content="https://www.gmcrypto.news" />
+        <meta property="og:image:alt" content="GM Crypto News" />
+        <meta property="og:url" content={SITE_URL} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GM Crypto News" />
+        <meta property="og:locale" content="en_US" />
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
-        <meta name="twitter:image" content="https://www.gmcrypto.news/og-image.png" />
+        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
+
+      {/* WebSite schema only on the canonical homepage view */}
+      {!isCategoryView && <WebsiteSchema />}
 
       <Ticker />
       <Navbar />
 
       <div className="home-layout">
-        {/* LEFT: Latest news */}
         <aside className="latest-feed">
           <div className="feed-header">
             <span className="feed-dot" />
@@ -175,12 +189,9 @@ export default function Home({ posts, telegramPosts }) {
           </div>
         </aside>
 
-        {/* CENTER: Main feed */}
         <main className="center-col">
-          {/* News wire from Telegram — above filters */}
           <NewsFeed posts={telegramPosts} />
 
-          {/* Desktop filter pills */}
           <div className="filter-bar">
             <button
               className="filter-arrow"
@@ -203,7 +214,6 @@ export default function Home({ posts, telegramPosts }) {
                     {f}
                   </button>
                 ))}
-                {/* Show active filter as a pill if it's not in the default FILTERS list (e.g. from footer link) */}
                 {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
                   <button
                     onClick={() => updateFilter(activeFilter)}
@@ -226,7 +236,6 @@ export default function Home({ posts, telegramPosts }) {
             </button>
           </div>
 
-          {/* Mobile dropdown filter */}
           <div className="filter-bar-mobile">
             <label className="filter-dropdown-label">Category</label>
             <div className="filter-dropdown-wrap">
@@ -238,7 +247,6 @@ export default function Home({ posts, telegramPosts }) {
                 {FILTERS.map(f => (
                   <option key={f} value={f}>{f}</option>
                 ))}
-                {/* Show active filter in dropdown if it's not in default FILTERS list */}
                 {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
                   <option value={activeFilter}>{activeFilter}</option>
                 )}
@@ -251,7 +259,6 @@ export default function Home({ posts, telegramPosts }) {
 
           {visiblePosts.length > 0 ? (
             <>
-              {/* DESKTOP article list */}
               <div className="article-list">
                 {visiblePosts.map((post, idx) => {
                   const hashtags = generateHashtags(post.title, post.category, 3)
@@ -312,15 +319,12 @@ export default function Home({ posts, telegramPosts }) {
                         </div>
                       </article>
 
-                      {/* Inject Analysis chart embed after the 3rd article (desktop only).
-                          If fewer than 3 articles total, show after the last one. */}
                       {(idx === 2 || (visiblePosts.length < 3 && idx === visiblePosts.length - 1)) && <AnalysisEmbed />}
                     </Fragment>
                   )
                 })}
               </div>
 
-              {/* MOBILE article list: hero + compact rows */}
               <div className="article-list-mobile">
                 {heroPost && (() => {
                   const heroHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
@@ -426,13 +430,11 @@ export default function Home({ posts, telegramPosts }) {
             </div>
           )}
 
-          {/* Mobile-only sidebar widgets at bottom */}
           <div className="mobile-sidebar-wrap">
             <Sidebar />
           </div>
         </main>
 
-        {/* RIGHT: Sidebar */}
         <aside className="home-sidebar">
           <Sidebar />
         </aside>
@@ -454,7 +456,7 @@ export async function getStaticProps() {
         posts: posts || [],
         telegramPosts: telegramPosts || [],
       },
-      revalidate: 300, // 5 minutes
+      revalidate: 300,
     }
   } catch (error) {
     console.error('Homepage data error:', error)
