@@ -3409,3 +3409,89 @@ body.light .ticker-change.down { color: #f44336; }
   color: var(--accent);
   border-color: var(--accent);
 }
+/* ============================================================
+   MARKETS SEARCH RESULTS — when user types in search box,
+   the table is replaced with a grid of matching coins.
+   ============================================================ */
+.markets-search-results {
+  margin: 24px 0 48px;
+}
+.markets-search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.markets-search-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s;
+}
+.markets-search-card:hover {
+  border-color: var(--accent);
+  background: var(--bg3, var(--bg2));
+}
+.markets-search-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.markets-search-info {
+  flex: 1;
+  min-width: 0;
+}
+.markets-search-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.markets-search-symbol {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.markets-search-rank {
+  color: var(--text3);
+}
+
+/* ============================================================
+   MARKETS ERROR BANNER — when fetch fails, show explanation
+   plus a retry button.
+   ============================================================ */
+.markets-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.markets-retry-btn {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.markets-retry-btn:hover {
+  opacity: 0.9;
+}
