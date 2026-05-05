@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/fetch-coins-list.js",
     "build": "next build",
     "start": "next start"
   },
