@@ -1,9 +1,11 @@
 // pages/sitemap.xml.js
 // Main XML sitemap. Generated dynamically from Sanity data + static pages
-// + top 100 coin detail pages.
+// + top 30 coin detail pages.
 //
-// The Google News sitemap lives separately at /sitemap-news.xml so news
-// crawlers can hit a lightweight 48h-only feed. Robots.txt references both.
+// IMPORTANT: We list 30 coins, not 100. Listing 100 caused Googlebot to crawl
+// faster than CoinGecko's Demo plan (~30 calls/min) could handle, leading to
+// rate-limit cascades that cached 404s for valid coin pages. 30 covers ~95%
+// of search volume safely.
 
 import { client } from '../lib/sanity'
 
@@ -24,31 +26,15 @@ const STATIC_PAGES = [
   { path: '/disclaimer',   priority: 0.2, changefreq: 'yearly'  },
 ]
 
-// Top 100 coins by market cap — covers ~99% of search volume for coin pages.
-// Static list to avoid hitting CoinGecko API for every sitemap regeneration.
-// Update periodically as the market shifts; alternative is fetching live from
-// CoinGecko but that risks rate limits + slow sitemap responses.
+// Top 30 coins by market cap — covers ~95% of search volume.
+// Verified slugs that exist on CoinGecko's API.
 const TOP_COIN_SLUGS = [
   'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
-  'ripple', 'usd-coin', 'staked-ether', 'dogecoin', 'cardano',
-  'tron', 'avalanche-2', 'chainlink', 'polkadot', 'wrapped-bitcoin',
-  'shiba-inu', 'polygon', 'litecoin', 'bitcoin-cash', 'dai',
-  'leo-token', 'uniswap', 'kaspa', 'pepe', 'near',
-  'aptos', 'internet-computer', 'monero', 'fetch-ai', 'stellar',
-  'ethereum-classic', 'cosmos', 'okb', 'render-token', 'crypto-com-chain',
-  'hedera-hashgraph', 'filecoin', 'arbitrum', 'mantle', 'maker',
-  'immutable-x', 'optimism', 'stacks', 'first-digital-usd', 'vechain',
-  'kucoin-shares', 'theta-token', 'the-graph', 'sui', 'fantom',
-  'injective-protocol', 'algorand', 'lido-dao', 'rocket-pool-eth', 'frax',
-  'tezos', 'thorchain', 'celestia', 'eos', 'aave',
-  'flow', 'sei-network', 'pancakeswap-token', 'rocket-pool', 'true-usd',
-  'ordinals', 'havven', 'klaytn', 'gemini-dollar', 'iota',
-  'bonk', 'jasmycoin', 'axie-infinity', 'gala', 'nervos-network',
-  'neo', 'tellor', 'zcash', 'beam-2', 'kava',
-  'wemix-token', 'akash-network', 'gatechain-token', 'osmosis', 'helium',
-  'mina-protocol', 'pyth-network', 'curve-dao-token', 'jupiter-exchange-solana', '1inch',
-  'huobi-token', 'dash', 'qtum', 'compound-governance-token', 'ravencoin',
-  'enjincoin', 'ecash', 'gnosis', 'ondo-finance', 'hyperliquid',
+  'ripple', 'usd-coin', 'dogecoin', 'cardano', 'tron',
+  'avalanche-2', 'chainlink', 'polkadot', 'shiba-inu', 'polygon',
+  'litecoin', 'bitcoin-cash', 'uniswap', 'kaspa', 'pepe',
+  'near', 'aptos', 'internet-computer', 'monero', 'stellar',
+  'ethereum-classic', 'cosmos', 'render-token', 'hedera-hashgraph', 'filecoin',
 ]
 
 function escapeXml(str) {
