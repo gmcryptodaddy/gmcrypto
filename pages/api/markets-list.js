@@ -1,7 +1,6 @@
 // pages/api/markets-list.js
 // Server-side proxy for CoinGecko's /coins/markets endpoint with caching.
-// Used by /markets page for pagination — keeps the browser from hitting
-// CoinGecko directly and centralizes rate limiting.
+// Used by /markets page for pagination.
 //
 // Cache: 60s fresh, 5min stale-while-revalidate.
 
@@ -12,11 +11,16 @@ const STALE_MS = 5 * 60 * 1000
 const PER_PAGE = 100
 
 async function fetchFromCoinGecko(page) {
-  const url =
-    `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd` +
-    `&order=market_cap_desc&per_page=${PER_PAGE}&page=${page}` +
-    `&sparkline=true&price_change_percentage=1h,24h,7d`
-  const headers = { 'Accept': 'application/json' }
+  const params = new URLSearchParams({
+    vs_currency: 'usd',
+    order: 'market_cap_desc',
+    per_page: String(PER_PAGE),
+    page: String(page),
+    sparkline: 'true',
+    price_change_percentage: '1h,24h,7d',
+  })
+  const url = `https://api.coingecko.com/api/v3/coins/markets?${params.toString()}`
+  const headers = { Accept: 'application/json' }
   if (process.env.COINGECKO_API_KEY) {
     headers['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY
   }
@@ -49,7 +53,7 @@ export default async function handler(req, res) {
       // Refresh in background; serve stale immediately
       fetchFromCoinGecko(page)
         .then(data => cache.set(page, { data, fetchedAt: Date.now() }))
-        .catch(err => console.error('Background refresh failed:', err.message))
+        .catch(err => console.error('Markets-list bg refresh failed:', err.message))
       return res.status(200).json(cached.data)
     }
   }
@@ -59,9 +63,15 @@ export default async function handler(req, res) {
     cache.set(page, { data, fetchedAt: now })
     return res.status(200).json(data)
   } catch (err) {
-    if (cached) return res.status(200).json(cached.data)
-    if (err.status === 429) return res.status(429).json({ error: 'Rate limited' })
-    console.error('markets-list error:', err)
-    return res.status(500).json({ error: 'Failed to fetch markets' })
+    // If we have ANY cached data, even very old, serve it rather than fail
+    if (cached) {
+      console.warn(`Serving stale cache for markets-list page ${page}:`, err.message)
+      return res.status(200).json(cached.data)
+    }
+    console.error(`markets-list page ${page} failed:`, err.message)
+    if (err.status === 429) {
+      return res.status(429).json({ error: 'Rate limited by upstream' })
+    }
+    return res.status(500).json({ error: 'Failed to fetch markets', detail: err.message })
   }
 }
