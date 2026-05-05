@@ -1,8 +1,13 @@
 // pages/markets/[coin].js
-// Coin detail page using ISR (Incremental Static Regeneration).
-// Pages render on-demand on first request, then cache + revalidate every 5 min.
-// No paths are pre-rendered at build time — avoids build failures from any
-// single coin slug returning unexpected data.
+// Coin detail page using ISR.
+//
+// CRITICAL: differentiates between two failure modes:
+//   - CoinGecko returned 404 (coin truly doesn't exist) → cache notFound for 1 hour
+//   - CoinGecko returned 429 / 5xx / network error → throw, Next.js returns 500
+//     (which is NOT cached, so the next request retries fresh)
+//
+// This prevents the failure mode where rate-limit errors get cached as 404s
+// and stick around forever.
 
 import { useState } from 'react'
 import Head from 'next/head'
@@ -107,8 +112,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
     )
   }
 
-  // All field accesses are defensively chained — any single missing field
-  // will fall back to '—' or be hidden, never crash the render.
   const md = coin.market_data || {}
   const price = md.current_price?.usd
   const change24h = md.price_change_percentage_24h
@@ -149,7 +152,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
     { name: coinName, url: pageUrl },
   ]
 
-  // Render-safe number checks
   const isUp7d = typeof change7d === 'number' && change7d >= 0
   const isUp30d = typeof change30d === 'number' && change30d >= 0
   const isUp24h = typeof change24h === 'number' && change24h >= 0
@@ -389,15 +391,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
 }
 
 // --- ISR setup ---
-// IMPORTANT: `paths: []` means NO coin pages are pre-rendered at build time.
-// This avoids any single bad CoinGecko response from breaking the entire build.
-// `fallback: 'blocking'` means the first visitor to any coin page triggers a
-// server render, which then caches for 5 minutes. After that, every visitor
-// gets the cached version instantly.
-//
-// Tradeoff: first visitor sees a brief delay (~1-2s) while the page renders.
-// All subsequent visitors get an instant cached response.
-
 export async function getStaticPaths() {
   return {
     paths: [],
@@ -406,75 +399,93 @@ export async function getStaticPaths() {
 }
 
 export async function getStaticProps({ params }) {
-  // Wrap EVERYTHING in try/catch. Any unexpected error returns notFound
-  // gracefully instead of crashing the build.
+  let coin = null
+  let upstreamError = null
+
   try {
-    let coin = null
-    let tickersData = null
+    coin = await getCoinDetails(params.coin)
+  } catch (err) {
+    // Capture the error so we can decide whether to cache notFound or throw
+    upstreamError = err
+  }
 
-    try {
-      coin = await getCoinDetails(params.coin)
-    } catch (err) {
-      console.error(`Failed to fetch coin ${params.coin}:`, err.message)
-      return { notFound: true, revalidate: 60 }
+  // Decide what to do based on error type:
+  //
+  //   1. Got coin data → render normally, cache for 5 min.
+  //   2. CoinGecko returned 404 (coin doesn't exist) → cache notFound for 1 hour.
+  //      No reason to keep retrying for a slug that genuinely doesn't exist.
+  //   3. Anything else (rate limit, network, 5xx) → THROW.
+  //      Throwing means Next.js returns a 500 response which is NOT cached.
+  //      The next request will try fresh — perfect for transient failures.
+  //
+  // The previous version cached notFound on ALL errors, which meant rate-limit
+  // errors stuck around for the full revalidate window and crawlers saw 404s
+  // for working coins.
+
+  if (upstreamError) {
+    const msg = upstreamError.message || ''
+    const isRealNotFound = msg.includes('404') || msg.includes('not found')
+    if (isRealNotFound) {
+      return { notFound: true, revalidate: 3600 }
     }
+    // Transient error — throw so Next.js returns a 500 (uncached).
+    // Vercel serverless logs this for debugging.
+    console.error(`Coin fetch transient error for ${params.coin}:`, msg)
+    throw upstreamError
+  }
 
-    if (!coin || !coin.id) {
-      return { notFound: true, revalidate: 60 }
+  if (!coin || !coin.id) {
+    return { notFound: true, revalidate: 3600 }
+  }
+
+  // Tickers and related articles are non-critical — never let them fail the page.
+  let tickersData = null
+  try {
+    tickersData = await getCoinTickers(params.coin)
+  } catch (err) {
+    console.error(`Tickers fetch failed for ${params.coin}:`, err.message)
+  }
+
+  let relatedArticles = []
+  try {
+    const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
+    const name = coin.name
+    if (name) {
+      const useSymbol = symbol && symbol.length >= 3
+      const query = useSymbol
+        ? `*[_type == "post" && (
+            title match $name ||
+            title match $symbol ||
+            category match $name ||
+            category match $symbol ||
+            excerpt match $name
+          )] | order(publishedAt desc)[0...4] {
+            _id, title, slug, mainImage, category, publishedAt, excerpt
+          }`
+        : `*[_type == "post" && (
+            title match $name ||
+            category match $name ||
+            excerpt match $name
+          )] | order(publishedAt desc)[0...4] {
+            _id, title, slug, mainImage, category, publishedAt, excerpt
+          }`
+
+      const queryParams = useSymbol
+        ? { name: `*${name}*`, symbol: `*${symbol}*` }
+        : { name: `*${name}*` }
+
+      relatedArticles = await client.fetch(query, queryParams)
     }
+  } catch (err) {
+    console.error('Related articles error:', err.message)
+  }
 
-    // Tickers are optional — never let them fail the page
-    try {
-      tickersData = await getCoinTickers(params.coin)
-    } catch (err) {
-      console.error(`Failed to fetch tickers for ${params.coin}:`, err.message)
-    }
-
-    // Related articles are optional too
-    let relatedArticles = []
-    try {
-      const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
-      const name = coin.name
-      if (name) {
-        const useSymbol = symbol && symbol.length >= 3
-        const query = useSymbol
-          ? `*[_type == "post" && (
-              title match $name ||
-              title match $symbol ||
-              category match $name ||
-              category match $symbol ||
-              excerpt match $name
-            )] | order(publishedAt desc)[0...4] {
-              _id, title, slug, mainImage, category, publishedAt, excerpt
-            }`
-          : `*[_type == "post" && (
-              title match $name ||
-              category match $name ||
-              excerpt match $name
-            )] | order(publishedAt desc)[0...4] {
-              _id, title, slug, mainImage, category, publishedAt, excerpt
-            }`
-
-        const queryParams = useSymbol
-          ? { name: `*${name}*`, symbol: `*${symbol}*` }
-          : { name: `*${name}*` }
-
-        relatedArticles = await client.fetch(query, queryParams)
-      }
-    } catch (err) {
-      console.error('Related articles error:', err.message)
-    }
-
-    return {
-      props: {
-        coin,
-        tickers: tickersData?.tickers || [],
-        relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
-      },
-      revalidate: 300,
-    }
-  } catch (error) {
-    console.error('Coin page unexpected error:', error)
-    return { notFound: true, revalidate: 60 }
+  return {
+    props: {
+      coin,
+      tickers: tickersData?.tickers || [],
+      relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
+    },
+    revalidate: 300, // 5 minutes
   }
 }
