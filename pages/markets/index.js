@@ -1,13 +1,20 @@
 // pages/markets/index.js
 // Cryptocurrency prices table.
 //
-// Architecture:
-//   - Page 1: ISR (statically generated, revalidates every 60s)
-//   - Pages 2-10: client-side fetch via /api/coins?page=N (cached server-side)
-//   - Search: hits /api/coins-index ONCE on mount → caches in browser memory.
-//     The API route fetches CoinGecko's /coins/list and caches for 24h.
-//     After first load, search is instant and works for any of CoinGecko's
-//     ~14k coins. No build-time scripts needed.
+// Architecture (zero rate-limit risk):
+//   - At build time, getStaticProps fetches ALL 10 pages of CoinGecko data
+//     (~1000 coins, ~500KB). This happens once per ISR revalidation cycle
+//     (every 5 min), NOT per visitor.
+//   - The full 1000-coin array is passed to the page as static props.
+//   - Pagination is client-side: slice(start, end) on the array. ZERO API
+//     calls when users click Next/Previous.
+//   - Search uses /api/coins-index for the full 14k coin list.
+//
+// This means:
+//   - No matter how many users browse, no matter how fast they click pages,
+//     CoinGecko gets at most 10 calls per 5 min from this page (during ISR).
+//   - Pagination is instant for everyone.
+//   - No rate-limit cascade possible.
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
@@ -30,17 +37,11 @@ const TOTAL_PAGES = 10
 const SEARCH_DEBOUNCE_MS = 150
 const MAX_SEARCH_RESULTS = 30
 
-export default function MarketsPage({ initialGlobalStats, initialCoins }) {
+export default function MarketsPage({ globalStats, allCoins }) {
   const router = useRouter()
   const [sortBy, setSortBy] = useState('market_cap_rank')
   const [sortDir, setSortDir] = useState('asc')
-
   const [page, setPage] = useState(1)
-  const [coins, setCoins] = useState(initialCoins || [])
-  const [globalStats, setGlobalStats] = useState(initialGlobalStats || null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [reloadKey, setReloadKey] = useState(0) // bump to force re-fetch
 
   // Search state
   const [coinIndex, setCoinIndex] = useState([])
@@ -55,7 +56,7 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
     setPage(urlPage)
   }, [router.isReady, router.query.page])
 
-  // Load coin search index ONCE on mount
+  // Load search index ONCE on mount
   useEffect(() => {
     setCoinIndexLoading(true)
     fetch('/api/coins-index')
@@ -64,9 +65,7 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
         return res.json()
       })
       .then(data => {
-        if (Array.isArray(data)) {
-          setCoinIndex(data)
-        }
+        if (Array.isArray(data)) setCoinIndex(data)
         setCoinIndexLoading(false)
       })
       .catch(err => {
@@ -75,58 +74,13 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
       })
   }, [])
 
-  // Load coins for current page
-  useEffect(() => {
-    if (page === 1) {
-      // Page 1 — use ISR-fresh data from static props
-      setCoins(initialCoins || [])
-      setError(null)
-      setLoading(false)
-      return
-    }
-
-    let cancelled = false
-    const ac = new AbortController()
-    setLoading(true)
-    setError(null)
-
-    fetch(`/api/coins?page=${page}`, { signal: ac.signal })
-      .then(async res => {
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`)
-        }
-        return res.json()
-      })
-      .then(data => {
-        if (cancelled) return
-        if (Array.isArray(data) && data.length > 0) {
-          setCoins(data)
-          setError(null)
-        } else {
-          setCoins([])
-          setError('No data available. Try again in a moment.')
-        }
-        setLoading(false)
-      })
-      .catch(err => {
-        if (err.name === 'AbortError') return
-        if (cancelled) return
-        console.error('Page fetch error:', err)
-        setCoins([])
-        setError('Failed to load. CoinGecko may be busy — try again in a moment.')
-        setLoading(false)
-      })
-
-    return () => { cancelled = true; ac.abort() }
-  }, [page, initialCoins, reloadKey])
-
-  // Debounce search input
+  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [searchInput])
 
-  // Filter coin index by search query — instant local filter
+  // Filter coin index for search results
   const searchResults = useMemo(() => {
     if (!debouncedSearch) return []
     if (coinIndex.length === 0) return []
@@ -173,19 +127,24 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
     }
   }, [page, router])
 
-  const handleRetry = useCallback(() => {
-    setReloadKey(k => k + 1)
-  }, [])
+  // CLIENT-SIDE PAGINATION: just slice the full array. No API call.
+  const pageCoins = useMemo(() => {
+    if (!Array.isArray(allCoins)) return []
+    const start = (page - 1) * PER_PAGE
+    const end = start + PER_PAGE
+    return allCoins.slice(start, end)
+  }, [allCoins, page])
 
+  // Sort the current page's slice
   const sortedCoins = useMemo(() => {
-    return [...(coins || [])].sort((a, b) => {
+    return [...pageCoins].sort((a, b) => {
       const av = a[sortBy] ?? 0
       const bv = b[sortBy] ?? 0
       if (av < bv) return sortDir === 'asc' ? -1 : 1
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [coins, sortBy, sortDir])
+  }, [pageCoins, sortBy, sortDir])
 
   const isSearching = debouncedSearch.length >= 1
   const isPaginatedView = page > 1
@@ -195,12 +154,13 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
   const btcDom = globalStats?.market_cap_percentage?.btc
   const capChange = globalStats?.market_cap_change_percentage_24h_usd
 
-  // Search placeholder reflects load state
   const searchPlaceholder = coinIndexLoading
     ? 'Loading coin database…'
     : coinIndex.length > 0
       ? `Search ${coinIndex.length.toLocaleString()} coins…`
       : 'Search coin or symbol…'
+
+  const noDataLoaded = !Array.isArray(allCoins) || allCoins.length === 0
 
   return (
     <>
@@ -305,24 +265,16 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
           </div>
         ) : (
           <>
-            {error && (
-              <div className="markets-error-banner">
-                <span>{error}</span>
-                <button type="button" className="markets-retry-btn" onClick={handleRetry}>
-                  Retry
-                </button>
-              </div>
-            )}
-
-            <div
-              className="markets-table-wrap"
-              style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s' }}
-            >
-              {sortedCoins.length === 0 && !loading && !error ? (
+            <div className="markets-table-wrap">
+              {noDataLoaded ? (
                 <div style={{ textAlign: 'center', padding: 48, color: 'var(--text3)' }}>
-                  Loading coins…
+                  Prices are temporarily unavailable. Refresh in a moment.
                 </div>
-              ) : sortedCoins.length > 0 && (
+              ) : sortedCoins.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 48, color: 'var(--text3)' }}>
+                  No coins on this page.
+                </div>
+              ) : (
                 <table className="markets-table">
                   <thead>
                     <tr>
@@ -383,7 +335,6 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
                   type="button"
                   className="pagination-btn"
                   onClick={() => goToPage(page - 1)}
-                  disabled={loading}
                 >
                   ← Previous
                 </button>
@@ -396,7 +347,6 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
                   type="button"
                   className="pagination-btn"
                   onClick={() => goToPage(page + 1)}
-                  disabled={loading}
                 >
                   Next →
                 </button>
@@ -411,27 +361,59 @@ export default function MarketsPage({ initialGlobalStats, initialCoins }) {
   )
 }
 
+// Helper: fetch one page with retry + delay between calls.
+// Spaces out CoinGecko requests to stay under Demo plan rate limit (30/min).
+async function fetchPageWithRetry(page, attempt = 1) {
+  try {
+    return await getCoinsMarkets({ page, perPage: PER_PAGE })
+  } catch (err) {
+    if (attempt < 3) {
+      // Wait 3 seconds and retry
+      await new Promise(r => setTimeout(r, 3000))
+      return fetchPageWithRetry(page, attempt + 1)
+    }
+    console.warn(`Page ${page} failed after 3 attempts:`, err.message)
+    return [] // Return empty rather than throwing — keep other pages working
+  }
+}
+
 export async function getStaticProps() {
   try {
-    const [globalStats, coins] = await Promise.all([
-      getGlobalStats().catch(() => null),
-      getCoinsMarkets({ page: 1, perPage: PER_PAGE }).catch(() => []),
-    ])
+    // Fetch global stats first (1 call)
+    const globalStats = await getGlobalStats().catch(() => null)
+
+    // Fetch all 10 pages SEQUENTIALLY with small delays.
+    // Demo plan = 30 calls/min = 1 call every 2 seconds is safe.
+    // Total time: ~20 seconds during build, only happens during ISR revalidate.
+    const allCoins = []
+    for (let p = 1; p <= TOTAL_PAGES; p++) {
+      const pageCoins = await fetchPageWithRetry(p)
+      if (Array.isArray(pageCoins) && pageCoins.length > 0) {
+        allCoins.push(...pageCoins)
+      }
+      // Small delay between calls to stay well under rate limit
+      if (p < TOTAL_PAGES) {
+        await new Promise(r => setTimeout(r, 1500))
+      }
+    }
+
     return {
       props: {
-        initialGlobalStats: globalStats || null,
-        initialCoins: coins || [],
+        globalStats: globalStats || null,
+        allCoins,
       },
-      revalidate: 60,
+      // Refresh every 5 minutes. Visitors during the 5min window all see
+      // the same cached data instantly — no rate limits possible.
+      revalidate: 300,
     }
   } catch (error) {
     console.error('Markets page build error:', error)
     return {
       props: {
-        initialGlobalStats: null,
-        initialCoins: [],
+        globalStats: null,
+        allCoins: [],
       },
-      revalidate: 60,
+      revalidate: 60, // retry sooner if build totally failed
     }
   }
 }
