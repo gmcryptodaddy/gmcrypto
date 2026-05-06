@@ -1,13 +1,16 @@
 // pages/markets/[coin].js
-// Coin detail page using ISR.
+// Coin detail page with bulletproof error handling.
 //
-// CRITICAL: differentiates between two failure modes:
-//   - CoinGecko returned 404 (coin truly doesn't exist) → cache notFound for 1 hour
-//   - CoinGecko returned 429 / 5xx / network error → throw, Next.js returns 500
-//     (which is NOT cached, so the next request retries fresh)
+// Failure modes handled:
+//   - CoinGecko rate-limits us → retry once after 2s
+//   - Still failing + we have cached data → use cached data
+//   - Still failing + no cache → show notFound with SHORT revalidate (60s)
+//     so the page auto-retries on next visit instead of being stuck
+//   - Coin truly doesn't exist (404) → cache notFound for 1 hour
 //
-// This prevents the failure mode where rate-limit errors get cached as 404s
-// and stick around forever.
+// In-memory cache stores the last successful fetch per coin. On serverless
+// platforms each instance has its own cache, but Vercel reuses warm
+// instances, so most repeat requests hit the cache.
 
 import { useState } from 'react'
 import Head from 'next/head'
@@ -33,6 +36,12 @@ const CoinChart = dynamic(() => import('../../components/CoinChart'), {
   ssr: false,
   loading: () => <div className="coin-chart-loading" style={{ height: 420 }}>Loading chart…</div>,
 })
+
+// In-memory cache for coin details. Persists across requests on warm instances.
+// Key: coin slug. Value: { coin, fetchedAt }
+const coinCache = new Map()
+const CACHE_FRESH_MS = 5 * 60 * 1000   // 5 min
+const CACHE_STALE_MS = 60 * 60 * 1000  // 1 hour fallback
 
 function stripHtml(html) {
   if (!html) return ''
@@ -398,94 +407,118 @@ export async function getStaticPaths() {
   }
 }
 
-export async function getStaticProps({ params }) {
-  let coin = null
-  let upstreamError = null
-
+// Try to fetch coin details with one retry on transient failure.
+// Returns: { coin, error } where exactly one is non-null.
+async function fetchCoinWithRetry(slug) {
   try {
-    coin = await getCoinDetails(params.coin)
+    const coin = await getCoinDetails(slug)
+    return { coin, error: null }
   } catch (err) {
-    // Capture the error so we can decide whether to cache notFound or throw
-    upstreamError = err
-  }
-
-  // Decide what to do based on error type:
-  //
-  //   1. Got coin data → render normally, cache for 5 min.
-  //   2. CoinGecko returned 404 (coin doesn't exist) → cache notFound for 1 hour.
-  //      No reason to keep retrying for a slug that genuinely doesn't exist.
-  //   3. Anything else (rate limit, network, 5xx) → THROW.
-  //      Throwing means Next.js returns a 500 response which is NOT cached.
-  //      The next request will try fresh — perfect for transient failures.
-  //
-  // The previous version cached notFound on ALL errors, which meant rate-limit
-  // errors stuck around for the full revalidate window and crawlers saw 404s
-  // for working coins.
-
-  if (upstreamError) {
-    const msg = upstreamError.message || ''
-    const isRealNotFound = msg.includes('404') || msg.includes('not found')
-    if (isRealNotFound) {
-      return { notFound: true, revalidate: 3600 }
+    // If it's a 404 (real not found), don't bother retrying
+    if (err.status === 404) {
+      return { coin: null, error: err }
     }
-    // Transient error — throw so Next.js returns a 500 (uncached).
-    // Vercel serverless logs this for debugging.
-    console.error(`Coin fetch transient error for ${params.coin}:`, msg)
-    throw upstreamError
+    // Wait 2 seconds and try once more
+    await new Promise(r => setTimeout(r, 2000))
+    try {
+      const coin = await getCoinDetails(slug)
+      return { coin, error: null }
+    } catch (err2) {
+      return { coin: null, error: err2 }
+    }
+  }
+}
+
+export async function getStaticProps({ params }) {
+  const slug = params.coin
+  const now = Date.now()
+
+  // Try fresh fetch first (with retry)
+  const { coin, error } = await fetchCoinWithRetry(slug)
+
+  // CASE 1: Fetch succeeded → cache it + render normally
+  if (coin && coin.id) {
+    coinCache.set(slug, { coin, fetchedAt: now })
+
+    // Tickers are non-critical — best effort
+    let tickersData = null
+    try {
+      tickersData = await getCoinTickers(slug)
+    } catch (err) {
+      console.warn(`Tickers failed for ${slug}: ${err.message}`)
+    }
+
+    // Related articles from Sanity — non-critical
+    let relatedArticles = []
+    try {
+      const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
+      const name = coin.name
+      if (name) {
+        const useSymbol = symbol && symbol.length >= 3
+        const query = useSymbol
+          ? `*[_type == "post" && (
+              title match $name ||
+              title match $symbol ||
+              category match $name ||
+              category match $symbol ||
+              excerpt match $name
+            )] | order(publishedAt desc)[0...4] {
+              _id, title, slug, mainImage, category, publishedAt, excerpt
+            }`
+          : `*[_type == "post" && (
+              title match $name ||
+              category match $name ||
+              excerpt match $name
+            )] | order(publishedAt desc)[0...4] {
+              _id, title, slug, mainImage, category, publishedAt, excerpt
+            }`
+
+        const queryParams = useSymbol
+          ? { name: `*${name}*`, symbol: `*${symbol}*` }
+          : { name: `*${name}*` }
+
+        relatedArticles = await client.fetch(query, queryParams)
+      }
+    } catch (err) {
+      console.warn(`Related articles failed for ${slug}: ${err.message}`)
+    }
+
+    return {
+      props: {
+        coin,
+        tickers: tickersData?.tickers || [],
+        relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
+      },
+      revalidate: 300, // 5 min
+    }
   }
 
-  if (!coin || !coin.id) {
+  // CASE 2: CoinGecko returned 404 (coin doesn't exist)
+  // Cache notFound for 1 hour — don't keep retrying for non-existent coins
+  if (error?.status === 404) {
     return { notFound: true, revalidate: 3600 }
   }
 
-  // Tickers and related articles are non-critical — never let them fail the page.
-  let tickersData = null
-  try {
-    tickersData = await getCoinTickers(params.coin)
-  } catch (err) {
-    console.error(`Tickers fetch failed for ${params.coin}:`, err.message)
-  }
-
-  let relatedArticles = []
-  try {
-    const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
-    const name = coin.name
-    if (name) {
-      const useSymbol = symbol && symbol.length >= 3
-      const query = useSymbol
-        ? `*[_type == "post" && (
-            title match $name ||
-            title match $symbol ||
-            category match $name ||
-            category match $symbol ||
-            excerpt match $name
-          )] | order(publishedAt desc)[0...4] {
-            _id, title, slug, mainImage, category, publishedAt, excerpt
-          }`
-        : `*[_type == "post" && (
-            title match $name ||
-            category match $name ||
-            excerpt match $name
-          )] | order(publishedAt desc)[0...4] {
-            _id, title, slug, mainImage, category, publishedAt, excerpt
-          }`
-
-      const queryParams = useSymbol
-        ? { name: `*${name}*`, symbol: `*${symbol}*` }
-        : { name: `*${name}*` }
-
-      relatedArticles = await client.fetch(query, queryParams)
+  // CASE 3: Transient error (rate limit, network, 5xx)
+  // Try our in-memory cache before giving up
+  const cached = coinCache.get(slug)
+  if (cached && (now - cached.fetchedAt) < CACHE_STALE_MS) {
+    console.warn(`Using stale cache for ${slug} (CoinGecko unavailable)`)
+    // Render with cached coin data, no fresh tickers, no related articles
+    return {
+      props: {
+        coin: cached.coin,
+        tickers: [],
+        relatedArticles: [],
+      },
+      // Short revalidate so we retry the fresh fetch soon
+      revalidate: 60,
     }
-  } catch (err) {
-    console.error('Related articles error:', err.message)
   }
 
-  return {
-    props: {
-      coin,
-      tickers: tickersData?.tickers || [],
-      relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
-    },
-    revalidate: 300, // 5 minutes
-  }
+  // CASE 4: No cache + transient error → return notFound with SHORT revalidate
+  // This way the page auto-retries on next visit (60s later) instead of being
+  // stuck for a long time. Better than throwing 500.
+  console.error(`Coin ${slug} unavailable, no cache: ${error?.message || 'unknown'}`)
+  return { notFound: true, revalidate: 60 }
 }
