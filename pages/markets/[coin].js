@@ -1,18 +1,20 @@
 // pages/markets/[coin].js
-// Coin detail page with bulletproof error handling.
 //
-// Failure modes handled:
-//   - CoinGecko rate-limits us → retry once after 2s
-//   - Still failing + we have cached data → use cached data
-//   - Still failing + no cache → show notFound with SHORT revalidate (60s)
-//     so the page auto-retries on next visit instead of being stuck
-//   - Coin truly doesn't exist (404) → cache notFound for 1 hour
+// Strategy: this page NEVER returns notFound for transient errors.
+//   - If CoinGecko works → render full page with all data (SEO-friendly)
+//   - If CoinGecko 404s (coin doesn't exist) → return notFound (1hr cache)
+//   - If CoinGecko rate-limits / errors → return PLACEHOLDER props with the
+//     slug. Page renders a loading state. Client-side fetches real data and
+//     fills it in. ISR retries the fetch in 30s background.
 //
-// In-memory cache stores the last successful fetch per coin. On serverless
-// platforms each instance has its own cache, but Vercel reuses warm
-// instances, so most repeat requests hit the cache.
+// Why this design:
+//   - Returning notFound on transient errors is broken in Next.js — even with
+//     `revalidate: N`, the notFound result can stick around (issue #21453).
+//   - Throwing on first request returns 500 to the user (bad UX).
+//   - Always returning 200 with placeholder + client retry = always recoverable
+//     + always SEO-indexable + always renders something.
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -36,12 +38,6 @@ const CoinChart = dynamic(() => import('../../components/CoinChart'), {
   ssr: false,
   loading: () => <div className="coin-chart-loading" style={{ height: 420 }}>Loading chart…</div>,
 })
-
-// In-memory cache for coin details. Persists across requests on warm instances.
-// Key: coin slug. Value: { coin, fetchedAt }
-const coinCache = new Map()
-const CACHE_FRESH_MS = 5 * 60 * 1000   // 5 min
-const CACHE_STALE_MS = 60 * 60 * 1000  // 1 hour fallback
 
 function stripHtml(html) {
   if (!html) return ''
@@ -98,29 +94,127 @@ function buildMetaTitle(coin) {
   return `${name} (${symbol}) Price, Chart, Market Cap — GM Crypto News`
 }
 
-export default function CoinPage({ coin, tickers, relatedArticles }) {
-  const [showFullAbout, setShowFullAbout] = useState(false)
+// Capitalize first letter for placeholder display name
+function slugToDisplayName(slug) {
+  if (!slug) return 'Coin'
+  return slug
+    .split('-')
+    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' ')
+}
 
-  if (!coin) {
+export default function CoinPage({ coin: initialCoin, tickers: initialTickers, relatedArticles, isPlaceholder, slug }) {
+  const [coin, setCoin] = useState(initialCoin)
+  const [tickers, setTickers] = useState(initialTickers || [])
+  const [showFullAbout, setShowFullAbout] = useState(false)
+  const [retrying, setRetrying] = useState(false)
+
+  // If we got a placeholder (CoinGecko was down at build time), try to fetch
+  // the real data client-side. This auto-recovers without user action.
+  useEffect(() => {
+    if (!isPlaceholder || !slug) return
+
+    let cancelled = false
+    setRetrying(true)
+
+    const tryFetch = async (attempt = 1) => {
+      try {
+        const res = await fetch(`/api/coin-detail?slug=${encodeURIComponent(slug)}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        if (cancelled) return
+        if (data && data.coin) {
+          setCoin(data.coin)
+          setTickers(data.tickers || [])
+          setRetrying(false)
+        } else {
+          throw new Error('Empty response')
+        }
+      } catch (err) {
+        if (cancelled) return
+        if (attempt < 3) {
+          setTimeout(() => tryFetch(attempt + 1), 2000 * attempt)
+        } else {
+          setRetrying(false)
+        }
+      }
+    }
+
+    tryFetch()
+    return () => { cancelled = true }
+  }, [isPlaceholder, slug])
+
+  // PLACEHOLDER STATE: CoinGecko was unavailable at build, showing skeleton
+  // until client-side fetch loads real data
+  if (!coin || coin._placeholder) {
+    const displayName = coin?.name || slugToDisplayName(slug)
     return (
       <>
         <Head>
-          <title>Coin not found — GM Crypto News</title>
+          <title>{displayName} — GM Crypto News</title>
+          <meta name="description" content={`${displayName} live price, chart, and market data. Loading data…`} />
           <meta name="robots" content="noindex" />
         </Head>
         <Ticker />
         <Navbar />
-        <div style={{ padding: '80px 24px', textAlign: 'center', color: 'var(--text2)' }}>
-          <h2>Coin not found</h2>
-          <Link href="/markets" style={{ color: 'var(--text)', marginTop: 16, display: 'block', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-            ← Back to markets
-          </Link>
+        <div className="coin-page">
+          <div className="coin-breadcrumbs">
+            <Link href="/">Home</Link>
+            <span className="sep">/</span>
+            <Link href="/markets">Markets</Link>
+            <span className="sep">/</span>
+            <span>{displayName}</span>
+          </div>
+
+          <section className="coin-header">
+            <div className="coin-header-top">
+              <div className="coin-header-identity">
+                <div>
+                  <h1 className="coin-header-name">{displayName}</h1>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+            {retrying ? (
+              <>
+                <div style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 12 }}>
+                  Loading {displayName} data…
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text3)' }}>
+                  CoinGecko is busy — retrying automatically.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 12 }}>
+                  Couldn't load {displayName} data
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>
+                  CoinGecko may be rate limited. Please try again in a moment.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="markets-retry-btn"
+                  style={{ marginRight: 12 }}
+                >
+                  Refresh
+                </button>
+                <Link href="/markets" className="coin-link-btn">
+                  ← Back to markets
+                </Link>
+              </>
+            )}
+          </div>
+          <Footer />
         </div>
-        <Footer />
       </>
     )
   }
 
+  // NORMAL STATE: full coin page renders below
   const md = coin.market_data || {}
   const price = md.current_price?.usd
   const change24h = md.price_change_percentage_24h
@@ -399,7 +493,6 @@ export default function CoinPage({ coin, tickers, relatedArticles }) {
   )
 }
 
-// --- ISR setup ---
 export async function getStaticPaths() {
   return {
     paths: [],
@@ -407,18 +500,17 @@ export async function getStaticPaths() {
   }
 }
 
-// Try to fetch coin details with one retry on transient failure.
+// Try to fetch with one retry on transient failure.
 // Returns: { coin, error } where exactly one is non-null.
 async function fetchCoinWithRetry(slug) {
   try {
     const coin = await getCoinDetails(slug)
     return { coin, error: null }
   } catch (err) {
-    // If it's a 404 (real not found), don't bother retrying
     if (err.status === 404) {
       return { coin: null, error: err }
     }
-    // Wait 2 seconds and try once more
+    // Wait 2 seconds and try again once
     await new Promise(r => setTimeout(r, 2000))
     try {
       const coin = await getCoinDetails(slug)
@@ -431,94 +523,81 @@ async function fetchCoinWithRetry(slug) {
 
 export async function getStaticProps({ params }) {
   const slug = params.coin
-  const now = Date.now()
-
-  // Try fresh fetch first (with retry)
   const { coin, error } = await fetchCoinWithRetry(slug)
 
-  // CASE 1: Fetch succeeded → cache it + render normally
-  if (coin && coin.id) {
-    coinCache.set(slug, { coin, fetchedAt: now })
-
-    // Tickers are non-critical — best effort
-    let tickersData = null
-    try {
-      tickersData = await getCoinTickers(slug)
-    } catch (err) {
-      console.warn(`Tickers failed for ${slug}: ${err.message}`)
-    }
-
-    // Related articles from Sanity — non-critical
-    let relatedArticles = []
-    try {
-      const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
-      const name = coin.name
-      if (name) {
-        const useSymbol = symbol && symbol.length >= 3
-        const query = useSymbol
-          ? `*[_type == "post" && (
-              title match $name ||
-              title match $symbol ||
-              category match $name ||
-              category match $symbol ||
-              excerpt match $name
-            )] | order(publishedAt desc)[0...4] {
-              _id, title, slug, mainImage, category, publishedAt, excerpt
-            }`
-          : `*[_type == "post" && (
-              title match $name ||
-              category match $name ||
-              excerpt match $name
-            )] | order(publishedAt desc)[0...4] {
-              _id, title, slug, mainImage, category, publishedAt, excerpt
-            }`
-
-        const queryParams = useSymbol
-          ? { name: `*${name}*`, symbol: `*${symbol}*` }
-          : { name: `*${name}*` }
-
-        relatedArticles = await client.fetch(query, queryParams)
-      }
-    } catch (err) {
-      console.warn(`Related articles failed for ${slug}: ${err.message}`)
-    }
-
-    return {
-      props: {
-        coin,
-        tickers: tickersData?.tickers || [],
-        relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
-      },
-      revalidate: 300, // 5 min
-    }
-  }
-
-  // CASE 2: CoinGecko returned 404 (coin doesn't exist)
-  // Cache notFound for 1 hour — don't keep retrying for non-existent coins
+  // Real 404 → cache notFound for 1 hour
   if (error?.status === 404) {
     return { notFound: true, revalidate: 3600 }
   }
 
-  // CASE 3: Transient error (rate limit, network, 5xx)
-  // Try our in-memory cache before giving up
-  const cached = coinCache.get(slug)
-  if (cached && (now - cached.fetchedAt) < CACHE_STALE_MS) {
-    console.warn(`Using stale cache for ${slug} (CoinGecko unavailable)`)
-    // Render with cached coin data, no fresh tickers, no related articles
+  // Transient error → return PLACEHOLDER props instead of notFound.
+  // The page renders with a loading state and the client-side useEffect
+  // tries /api/coin-detail to fetch fresh data. ISR also retries in
+  // background after 30s.
+  if (!coin) {
+    console.warn(`Coin ${slug} unavailable: ${error?.message || 'unknown'}, returning placeholder`)
     return {
       props: {
-        coin: cached.coin,
+        coin: { id: slug, _placeholder: true },
         tickers: [],
         relatedArticles: [],
+        isPlaceholder: true,
+        slug,
       },
-      // Short revalidate so we retry the fresh fetch soon
-      revalidate: 60,
+      revalidate: 30, // Try again soon
     }
   }
 
-  // CASE 4: No cache + transient error → return notFound with SHORT revalidate
-  // This way the page auto-retries on next visit (60s later) instead of being
-  // stuck for a long time. Better than throwing 500.
-  console.error(`Coin ${slug} unavailable, no cache: ${error?.message || 'unknown'}`)
-  return { notFound: true, revalidate: 60 }
+  // Success — fetch tickers and related articles (best-effort, never throw)
+  let tickersData = null
+  try {
+    tickersData = await getCoinTickers(slug)
+  } catch (err) {
+    console.warn(`Tickers failed for ${slug}: ${err.message}`)
+  }
+
+  let relatedArticles = []
+  try {
+    const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
+    const name = coin.name
+    if (name) {
+      const useSymbol = symbol && symbol.length >= 3
+      const query = useSymbol
+        ? `*[_type == "post" && (
+            title match $name ||
+            title match $symbol ||
+            category match $name ||
+            category match $symbol ||
+            excerpt match $name
+          )] | order(publishedAt desc)[0...4] {
+            _id, title, slug, mainImage, category, publishedAt, excerpt
+          }`
+        : `*[_type == "post" && (
+            title match $name ||
+            category match $name ||
+            excerpt match $name
+          )] | order(publishedAt desc)[0...4] {
+            _id, title, slug, mainImage, category, publishedAt, excerpt
+          }`
+
+      const queryParams = useSymbol
+        ? { name: `*${name}*`, symbol: `*${symbol}*` }
+        : { name: `*${name}*` }
+
+      relatedArticles = await client.fetch(query, queryParams)
+    }
+  } catch (err) {
+    console.warn(`Related articles failed for ${slug}: ${err.message}`)
+  }
+
+  return {
+    props: {
+      coin,
+      tickers: tickersData?.tickers || [],
+      relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
+      isPlaceholder: false,
+      slug,
+    },
+    revalidate: 300, // 5 min for successful pages
+  }
 }
