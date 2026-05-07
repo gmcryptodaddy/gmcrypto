@@ -1,18 +1,23 @@
 // pages/markets/[coin].js
 //
-// Strategy: this page NEVER returns notFound for transient errors.
-//   - If CoinGecko works → render full page with all data (SEO-friendly)
-//   - If CoinGecko 404s (coin doesn't exist) → return notFound (1hr cache)
-//   - If CoinGecko rate-limits / errors → return PLACEHOLDER props with the
-//     slug. Page renders a loading state. Client-side fetches real data and
-//     fills it in. ISR retries the fetch in 30s background.
+// Architecture:
+//   - Static data (description, links, logo, ATH/ATL, supply) comes from
+//     public/coins-snapshot.json — built weekly by scripts/snapshot-coins.js.
+//     Zero CoinGecko calls per page view. Pages always render.
+//   - Live price + 24h change is fetched client-side from /api/coin-price
+//     using CoinGecko's lightweight /simple/price endpoint. ~30s refresh.
+//   - Chart is a TradingView widget — zero CoinGecko API hit.
 //
-// Why this design:
-//   - Returning notFound on transient errors is broken in Next.js — even with
-//     `revalidate: N`, the notFound result can stick around (issue #21453).
-//   - Throwing on first request returns 500 to the user (bad UX).
-//   - Always returning 200 with placeholder + client retry = always recoverable
-//     + always SEO-indexable + always renders something.
+// Result:
+//   - Coin pages always work, never rate-limited
+//   - Charts are professional + free
+//   - We use ~1 cheap CoinGecko call per coin page view (just for live price)
+//
+// Coins in snapshot but not on Binance: TradingView chart shows "symbol not
+// found." Fixable by adding overrides in components/TradingViewChart.js
+//
+// Coins NOT in snapshot (outside top 1000 by market cap): page returns 404.
+// Snapshot refreshes weekly; new top-1000 coins appear within a week.
 
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
@@ -23,9 +28,8 @@ import Ticker from '../../components/Ticker'
 import Footer from '../../components/Footer'
 import { CryptocurrencySchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
+import { getCoinFromSnapshot } from '../../lib/coin-snapshot'
 import {
-  getCoinDetails,
-  getCoinTickers,
   formatPrice,
   formatBigNumber,
   formatPercent,
@@ -34,15 +38,11 @@ import {
 
 const SITE_URL = 'https://www.gmcrypto.news'
 
-const CoinChart = dynamic(() => import('../../components/CoinChart'), {
+// TradingView widget loads dynamically (client-side only)
+const TradingViewChart = dynamic(() => import('../../components/TradingViewChart'), {
   ssr: false,
-  loading: () => <div className="coin-chart-loading" style={{ height: 420 }}>Loading chart…</div>,
+  loading: () => <div className="coin-chart-loading" style={{ height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
 })
-
-function stripHtml(html) {
-  if (!html) return ''
-  return String(html).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
-}
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -59,173 +59,105 @@ function timeAgo(dateStr) {
   return `${d}d ago`
 }
 
-function buildMetaDescription(coin) {
-  const md = coin.market_data || {}
-  const price = md.current_price?.usd
-  const change = md.price_change_percentage_24h
-  const cap = md.market_cap?.usd
-  const rank = coin.market_cap_rank
+function buildMetaDescription(coin, livePrice, liveChange) {
   const symbol = coin.symbol ? coin.symbol.toUpperCase() : ''
   const name = coin.name || 'Coin'
-
+  const rank = coin.market_cap_rank
   const parts = []
-  if (price) {
-    parts.push(`${name} (${symbol}) price today: ${formatPrice(price)} USD`)
+  if (livePrice) {
+    parts.push(`${name} (${symbol}) price today: ${formatPrice(livePrice)} USD`)
   } else {
     parts.push(`${name} (${symbol}) live price, chart, and market cap`)
   }
-  if (change != null && !isNaN(change)) {
-    const sign = change >= 0 ? '+' : ''
-    parts.push(`${sign}${change.toFixed(2)}% (24h)`)
+  if (liveChange != null && !isNaN(liveChange)) {
+    const sign = liveChange >= 0 ? '+' : ''
+    parts.push(`${sign}${liveChange.toFixed(2)}% (24h)`)
   }
   if (rank) parts.push(`Rank #${rank}`)
-  if (cap) parts.push(`market cap ${formatBigNumber(cap)}`)
   return parts.join('. ') + '. Live charts, news, and analysis on GM Crypto News.'
 }
 
-function buildMetaTitle(coin) {
-  const md = coin.market_data || {}
-  const price = md.current_price?.usd
+function buildMetaTitle(coin, livePrice) {
   const symbol = coin.symbol ? coin.symbol.toUpperCase() : ''
   const name = coin.name || 'Coin'
-  if (price) {
-    return `${name} (${symbol}) Price: ${formatPrice(price)} USD — Live Chart & News | GM Crypto`
+  if (livePrice) {
+    return `${name} (${symbol}) Price: ${formatPrice(livePrice)} USD — Live Chart & News | GM Crypto`
   }
   return `${name} (${symbol}) Price, Chart, Market Cap — GM Crypto News`
 }
 
-// Capitalize first letter for placeholder display name
-function slugToDisplayName(slug) {
-  if (!slug) return 'Coin'
-  return slug
-    .split('-')
-    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(' ')
-}
+export default function CoinPage({ coin, relatedArticles }) {
+  // Live price state — fetched client-side
+  const [livePrice, setLivePrice] = useState(null)
+  const [liveChange, setLiveChange] = useState(null)
+  const [liveMarketCap, setLiveMarketCap] = useState(null)
+  const [liveVolume, setLiveVolume] = useState(null)
+  const [priceLoading, setPriceLoading] = useState(true)
 
-export default function CoinPage({ coin: initialCoin, tickers: initialTickers, relatedArticles, isPlaceholder, slug }) {
-  const [coin, setCoin] = useState(initialCoin)
-  const [tickers, setTickers] = useState(initialTickers || [])
   const [showFullAbout, setShowFullAbout] = useState(false)
-  const [retrying, setRetrying] = useState(false)
 
-  // If we got a placeholder (CoinGecko was down at build time), try to fetch
-  // the real data client-side. This auto-recovers without user action.
+  // Fetch live price on mount, then refresh every 30s while page is open
   useEffect(() => {
-    if (!isPlaceholder || !slug) return
+    if (!coin?.id) return
 
     let cancelled = false
-    setRetrying(true)
+    let intervalId = null
 
-    const tryFetch = async (attempt = 1) => {
+    const fetchPrice = async () => {
       try {
-        const res = await fetch(`/api/coin-detail?slug=${encodeURIComponent(slug)}`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const res = await fetch(`/api/coin-price?ids=${encodeURIComponent(coin.id)}`)
+        if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
-        if (data && data.coin) {
-          setCoin(data.coin)
-          setTickers(data.tickers || [])
-          setRetrying(false)
-        } else {
-          throw new Error('Empty response')
+        const priceData = data?.[coin.id]
+        if (priceData) {
+          setLivePrice(priceData.usd ?? null)
+          setLiveChange(priceData.usd_24h_change ?? null)
+          setLiveMarketCap(priceData.usd_market_cap ?? null)
+          setLiveVolume(priceData.usd_24h_vol ?? null)
         }
+        setPriceLoading(false)
       } catch (err) {
-        if (cancelled) return
-        if (attempt < 3) {
-          setTimeout(() => tryFetch(attempt + 1), 2000 * attempt)
-        } else {
-          setRetrying(false)
-        }
+        // Silent fail — page still works without live price
+        setPriceLoading(false)
       }
     }
 
-    tryFetch()
-    return () => { cancelled = true }
-  }, [isPlaceholder, slug])
+    fetchPrice()
+    intervalId = setInterval(fetchPrice, 30000) // refresh every 30s
 
-  // PLACEHOLDER STATE: CoinGecko was unavailable at build, showing skeleton
-  // until client-side fetch loads real data
-  if (!coin || coin._placeholder) {
-    const displayName = coin?.name || slugToDisplayName(slug)
+    return () => {
+      cancelled = true
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [coin?.id])
+
+  if (!coin) {
     return (
       <>
         <Head>
-          <title>{displayName} — GM Crypto News</title>
-          <meta name="description" content={`${displayName} live price, chart, and market data. Loading data…`} />
+          <title>Coin not found — GM Crypto News</title>
           <meta name="robots" content="noindex" />
         </Head>
         <Ticker />
         <Navbar />
-        <div className="coin-page">
-          <div className="coin-breadcrumbs">
-            <Link href="/">Home</Link>
-            <span className="sep">/</span>
-            <Link href="/markets">Markets</Link>
-            <span className="sep">/</span>
-            <span>{displayName}</span>
-          </div>
-
-          <section className="coin-header">
-            <div className="coin-header-top">
-              <div className="coin-header-identity">
-                <div>
-                  <h1 className="coin-header-name">{displayName}</h1>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
-            {retrying ? (
-              <>
-                <div style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 12 }}>
-                  Loading {displayName} data…
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text3)' }}>
-                  CoinGecko is busy — retrying automatically.
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 12 }}>
-                  Couldn't load {displayName} data
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>
-                  CoinGecko may be rate limited. Please try again in a moment.
-                </div>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="markets-retry-btn"
-                  style={{ marginRight: 12 }}
-                >
-                  Refresh
-                </button>
-                <Link href="/markets" className="coin-link-btn">
-                  ← Back to markets
-                </Link>
-              </>
-            )}
-          </div>
-          <Footer />
+        <div style={{ padding: '80px 24px', textAlign: 'center', color: 'var(--text2)' }}>
+          <h2>Coin not found</h2>
+          <Link href="/markets" style={{ color: 'var(--text)', marginTop: 16, display: 'block', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+            ← Back to markets
+          </Link>
         </div>
+        <Footer />
       </>
     )
   }
 
-  // NORMAL STATE: full coin page renders below
+  // Static data from snapshot
   const md = coin.market_data || {}
-  const price = md.current_price?.usd
-  const change24h = md.price_change_percentage_24h
-  const change7d = md.price_change_percentage_7d
-  const change30d = md.price_change_percentage_30d
-  const marketCap = md.market_cap?.usd
-  const volume = md.total_volume?.usd
-  const ath = md.ath?.usd
-  const athChange = md.ath_change_percentage?.usd
-  const atl = md.atl?.usd
-  const atlChange = md.atl_change_percentage?.usd
+  const ath = md.ath_usd
+  const athChange = md.ath_change_percentage_usd
+  const atl = md.atl_usd
+  const atlChange = md.atl_change_percentage_usd
   const circSupply = md.circulating_supply
   const totalSupply = md.total_supply
   const maxSupply = md.max_supply
@@ -233,21 +165,21 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
   const symbolUpper = coin.symbol ? coin.symbol.toUpperCase() : ''
   const coinName = coin.name || 'Coin'
 
-  const description = stripHtml(coin.description?.en || '')
+  const description = (coin.description_en || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
   const shortDesc = description.slice(0, 400)
   const hasMore = description.length > 400
 
-  const homepage = coin.links?.homepage?.[0]
+  const homepage = coin.links?.homepage
   const twitter = coin.links?.twitter_screen_name
-  const github = coin.links?.repos_url?.github?.[0]
+  const github = coin.links?.github
 
   const hasNews = Array.isArray(relatedArticles) && relatedArticles.length > 0
   const newsCategorySlug = `${coinName} News`
 
   const pageUrl = `${SITE_URL}/markets/${coin.id}`
-  const metaTitle = buildMetaTitle(coin)
-  const metaDescription = buildMetaDescription(coin)
-  const ogImage = coin.image?.large || `${SITE_URL}/og-image.png`
+  const metaTitle = buildMetaTitle(coin, livePrice)
+  const metaDescription = buildMetaDescription(coin, livePrice, liveChange)
+  const ogImage = coin.image || `${SITE_URL}/og-image.png`
 
   const breadcrumbItems = [
     { name: 'Home', url: SITE_URL },
@@ -255,9 +187,18 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
     { name: coinName, url: pageUrl },
   ]
 
-  const isUp7d = typeof change7d === 'number' && change7d >= 0
-  const isUp30d = typeof change30d === 'number' && change30d >= 0
-  const isUp24h = typeof change24h === 'number' && change24h >= 0
+  const isUp24h = typeof liveChange === 'number' && liveChange >= 0
+
+  // Build coin object for schema (combines static + live data)
+  const schemaCoin = {
+    ...coin,
+    image: { large: coin.image },
+    market_cap_rank: rank,
+    market_data: {
+      current_price: livePrice ? { usd: livePrice } : undefined,
+    },
+    description: { en: description },
+  }
 
   return (
     <>
@@ -282,7 +223,7 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
 
-      <CryptocurrencySchema coin={coin} />
+      <CryptocurrencySchema coin={schemaCoin} />
       <BreadcrumbSchema items={breadcrumbItems} />
 
       <Ticker />
@@ -300,8 +241,8 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
         <section className="coin-header">
           <div className="coin-header-top">
             <div className="coin-header-identity">
-              {coin.image?.large && (
-                <img src={coin.image.large} alt={`${coinName} logo`} className="coin-header-img" />
+              {coin.image && (
+                <img src={coin.image} alt={`${coinName} logo`} className="coin-header-img" />
               )}
               <div>
                 <div className="coin-header-rank">
@@ -329,27 +270,29 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
           </div>
 
           <div className="coin-header-price">
-            <div className="coin-price-value">{formatPrice(price)}</div>
-            {typeof change24h === 'number' && (
+            <div className="coin-price-value">
+              {livePrice != null ? formatPrice(livePrice) : (priceLoading ? '…' : '—')}
+            </div>
+            {typeof liveChange === 'number' && (
               <div className={`coin-price-change ${isUp24h ? 'up' : 'down'}`}>
-                {formatPercent(change24h)} <span className="coin-price-change-label">(24h)</span>
+                {formatPercent(liveChange)} <span className="coin-price-change-label">(24h)</span>
               </div>
             )}
           </div>
         </section>
 
         <section className="coin-chart-section">
-          <CoinChart coinId={coin.id} color="#FF6B00" />
+          <TradingViewChart symbol={symbolUpper} coinName={coinName} />
         </section>
 
         <section className="coin-stats-grid">
           <div className="coin-stat">
             <div className="coin-stat-label">Market Cap</div>
-            <div className="coin-stat-value">{formatBigNumber(marketCap)}</div>
+            <div className="coin-stat-value">{formatBigNumber(liveMarketCap)}</div>
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">24h Volume</div>
-            <div className="coin-stat-value">{formatBigNumber(volume)}</div>
+            <div className="coin-stat-value">{formatBigNumber(liveVolume)}</div>
           </div>
           <div className="coin-stat">
             <div className="coin-stat-label">Circulating Supply</div>
@@ -380,16 +323,14 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
             )}
           </div>
           <div className="coin-stat">
-            <div className="coin-stat-label">7d Change</div>
-            <div className={`coin-stat-value ${isUp7d ? 'up' : 'down'}`}>
-              {formatPercent(change7d)}
+            <div className="coin-stat-label">Total Supply</div>
+            <div className="coin-stat-value">
+              {totalSupply ? `${formatSupply(totalSupply)} ${symbolUpper}` : '—'}
             </div>
           </div>
           <div className="coin-stat">
-            <div className="coin-stat-label">30d Change</div>
-            <div className={`coin-stat-value ${isUp30d ? 'up' : 'down'}`}>
-              {formatPercent(change30d)}
-            </div>
+            <div className="coin-stat-label">Rank</div>
+            <div className="coin-stat-value">{rank ? `#${rank}` : '—'}</div>
           </div>
         </section>
 
@@ -453,40 +394,6 @@ export default function CoinPage({ coin: initialCoin, tickers: initialTickers, r
           </section>
         )}
 
-        {Array.isArray(tickers) && tickers.length > 0 && (
-          <section className="coin-exchanges">
-            <h2 className="coin-section-title">Top {symbolUpper} Markets</h2>
-            <div className="coin-exchanges-wrap">
-              <table className="coin-exchanges-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Exchange</th>
-                    <th>Pair</th>
-                    <th className="right">Price</th>
-                    <th className="right">Volume (24h)</th>
-                    <th className="right">Trust</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tickers.slice(0, 15).map((t, i) => (
-                    <tr key={i}>
-                      <td>{i + 1}</td>
-                      <td>{t.market?.name || '—'}</td>
-                      <td><span className="coin-pair">{t.base || '?'}/{t.target || '?'}</span></td>
-                      <td className="right">{formatPrice(t.converted_last?.usd)}</td>
-                      <td className="right">{formatBigNumber(t.converted_volume?.usd)}</td>
-                      <td className="right">
-                        <span className={`trust-dot trust-${t.trust_score || 'unknown'}`} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
         <Footer />
       </div>
     </>
@@ -500,62 +407,18 @@ export async function getStaticPaths() {
   }
 }
 
-// Try to fetch with one retry on transient failure.
-// Returns: { coin, error } where exactly one is non-null.
-async function fetchCoinWithRetry(slug) {
-  try {
-    const coin = await getCoinDetails(slug)
-    return { coin, error: null }
-  } catch (err) {
-    if (err.status === 404) {
-      return { coin: null, error: err }
-    }
-    // Wait 2 seconds and try again once
-    await new Promise(r => setTimeout(r, 2000))
-    try {
-      const coin = await getCoinDetails(slug)
-      return { coin, error: null }
-    } catch (err2) {
-      return { coin: null, error: err2 }
-    }
-  }
-}
-
 export async function getStaticProps({ params }) {
   const slug = params.coin
-  const { coin, error } = await fetchCoinWithRetry(slug)
+  const coin = getCoinFromSnapshot(slug)
 
-  // Real 404 → cache notFound for 1 hour
-  if (error?.status === 404) {
+  if (!coin) {
+    // Coin not in our snapshot. Either it's outside top 1000 or doesn't exist.
+    // Cache the not-found for 1 hour — snapshot refreshes weekly so a new
+    // top-1000 coin will appear within a week.
     return { notFound: true, revalidate: 3600 }
   }
 
-  // Transient error → return PLACEHOLDER props instead of notFound.
-  // The page renders with a loading state and the client-side useEffect
-  // tries /api/coin-detail to fetch fresh data. ISR also retries in
-  // background after 30s.
-  if (!coin) {
-    console.warn(`Coin ${slug} unavailable: ${error?.message || 'unknown'}, returning placeholder`)
-    return {
-      props: {
-        coin: { id: slug, _placeholder: true },
-        tickers: [],
-        relatedArticles: [],
-        isPlaceholder: true,
-        slug,
-      },
-      revalidate: 30, // Try again soon
-    }
-  }
-
-  // Success — fetch tickers and related articles (best-effort, never throw)
-  let tickersData = null
-  try {
-    tickersData = await getCoinTickers(slug)
-  } catch (err) {
-    console.warn(`Tickers failed for ${slug}: ${err.message}`)
-  }
-
+  // Fetch related articles from Sanity (best-effort, never fails the page)
   let relatedArticles = []
   try {
     const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
@@ -593,11 +456,10 @@ export async function getStaticProps({ params }) {
   return {
     props: {
       coin,
-      tickers: tickersData?.tickers || [],
       relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
-      isPlaceholder: false,
-      slug,
     },
-    revalidate: 300, // 5 min for successful pages
+    // Snapshot refreshes weekly via GitHub Action. Revalidate every hour
+    // so deployed app picks up new snapshot within an hour after push.
+    revalidate: 3600,
   }
 }
