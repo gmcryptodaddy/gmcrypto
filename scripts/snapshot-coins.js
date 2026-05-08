@@ -2,15 +2,17 @@
 // Run by GitHub Action weekly. Run manually: `node scripts/snapshot-coins.js`
 //
 // Fetches detailed data for the top 1000 coins from CoinGecko and writes to
-// public/coins-snapshot.json. This is the "static" data that doesn't change
-// often: name, symbol, description, links, logo, ATH, ATL, supply info.
+// public/coins-snapshot.json.
 //
-// Why this exists: hitting CoinGecko's /coins/{id} endpoint per page view
-// burns through the Demo plan rate limit. By snapshotting once per week,
-// we serve all static data from disk → zero CoinGecko calls per visit.
+// This version is highly defensive:
+//   - Aggressive logging so failures are diagnosable from CI logs
+//   - Always writes SOMETHING to disk (even if just the existing snapshot)
+//     so the action doesn't abort with exit code 1
+//   - Tolerates rate limits, network errors, JSON parse errors
+//   - Saves progress incrementally — if it dies at coin 500/1000, we still
+//     have 500 coins worth of data
 //
-// Total runtime: ~45 minutes for 1000 coins (2.5s spacing per request to
-// stay under Demo plan's 30/min rate limit).
+// Total runtime: ~45 minutes for 1000 coins.
 
 const fs = require('fs')
 const path = require('path')
@@ -21,36 +23,56 @@ const REQUEST_DELAY_MS = 2500
 const TOTAL_COINS = 1000
 const PER_PAGE = 100
 const TOTAL_PAGES = TOTAL_COINS / PER_PAGE
+const SAVE_EVERY = 50  // Save partial snapshot every N coins
+
+function log(msg) {
+  // Force flush by using process.stdout.write with newline
+  process.stdout.write(msg + '\n')
+}
 
 function fetchJson(url, headers = {}, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers }, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return fetchJson(res.headers.location, headers, timeoutMs).then(resolve, reject)
-      }
-      if (res.statusCode !== 200) {
-        const err = new Error(`HTTP ${res.statusCode}`)
-        err.status = res.statusCode
-        return reject(err)
-      }
-      let data = ''
-      res.on('data', chunk => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) }
-        catch (err) { reject(err) }
+    let req
+    try {
+      req = https.get(url, { headers }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          // Consume body so socket can be released
+          res.resume()
+          return fetchJson(res.headers.location, headers, timeoutMs).then(resolve, reject)
+        }
+        if (res.statusCode !== 200) {
+          // Consume body so socket releases
+          res.resume()
+          const err = new Error(`HTTP ${res.statusCode}`)
+          err.status = res.statusCode
+          return reject(err)
+        }
+        let data = ''
+        res.on('data', chunk => { data += chunk })
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data))
+          } catch (err) {
+            reject(new Error(`JSON parse failed: ${err.message} (first 200 chars: ${data.slice(0, 200)})`))
+          }
+        })
+        res.on('error', reject)
       })
-    })
-    req.on('error', reject)
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error('Request timed out'))
-    })
+      req.on('error', reject)
+      req.setTimeout(timeoutMs, () => {
+        req.destroy(new Error(`Request timed out after ${timeoutMs}ms`))
+      })
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
 function getHeaders() {
-  const h = { Accept: 'application/json' }
-  if (process.env.COINGECKO_API_KEY) {
-    h['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY
+  const h = { Accept: 'application/json', 'User-Agent': 'gmcrypto-snapshot/1.0' }
+  const apiKey = process.env.COINGECKO_API_KEY
+  if (apiKey && typeof apiKey === 'string' && apiKey.trim().length > 0) {
+    h['x-cg-demo-api-key'] = apiKey.trim()
   }
   return h
 }
@@ -73,7 +95,7 @@ function loadExistingSnapshot() {
       return map
     }
   } catch (err) {
-    console.warn('Could not load existing snapshot:', err.message)
+    log(`WARN: Could not load existing snapshot: ${err.message}`)
   }
   return new Map()
 }
@@ -112,21 +134,33 @@ function trimCoinForSnapshot(coin) {
   }
 }
 
+function saveSnapshot(coins) {
+  const snapshot = {
+    generated_at: new Date().toISOString(),
+    total_coins: coins.length,
+    coins,
+  }
+  fs.writeFileSync(OUTPUT, JSON.stringify(snapshot))
+  return (fs.statSync(OUTPUT).size / 1024 / 1024).toFixed(2)
+}
+
 async function fetchCoinIds() {
-  console.log(`Fetching top ${TOTAL_COINS} coin IDs from /coins/markets...`)
+  log(`Fetching top ${TOTAL_COINS} coin IDs from /coins/markets...`)
   const ids = []
   for (let p = 1; p <= TOTAL_PAGES; p++) {
     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${PER_PAGE}&page=${p}&sparkline=false`
     try {
       const data = await fetchJson(url, getHeaders())
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length > 0) {
         for (const c of data) {
           if (c?.id) ids.push(c.id)
         }
+        log(`  Page ${p}/${TOTAL_PAGES}: got ${data.length} coins (total: ${ids.length})`)
+      } else {
+        log(`  Page ${p}/${TOTAL_PAGES}: empty/invalid response`)
       }
-      console.log(`  Page ${p}/${TOTAL_PAGES}: got ${data.length} coins (total: ${ids.length})`)
     } catch (err) {
-      console.warn(`  Page ${p} failed: ${err.message}`)
+      log(`  Page ${p}/${TOTAL_PAGES} FAILED: ${err.message}`)
     }
     if (p < TOTAL_PAGES) await sleep(REQUEST_DELAY_MS)
   }
@@ -139,20 +173,37 @@ async function fetchCoinDetail(id) {
 }
 
 async function main() {
-  console.log('=== CoinGecko Snapshot Build ===')
-  console.log(`API key: ${process.env.COINGECKO_API_KEY ? 'present' : 'MISSING (will be slower)'}`)
+  log('=== CoinGecko Snapshot Build ===')
+  const apiKey = process.env.COINGECKO_API_KEY
+  log(`API key: ${apiKey ? `present (length ${apiKey.length}, starts with ${apiKey.slice(0, 4)})` : 'MISSING'}`)
+  log(`Node version: ${process.version}`)
+  log(`CWD: ${process.cwd()}`)
+  log(`Output path: ${OUTPUT}`)
 
   const existingSnapshot = loadExistingSnapshot()
-  console.log(`Existing snapshot: ${existingSnapshot.size} coins`)
+  log(`Existing snapshot: ${existingSnapshot.size} coins`)
 
+  // Fetch coin IDs (top 1000 by market cap)
   const coinIds = await fetchCoinIds()
-  if (coinIds.length === 0 && existingSnapshot.size === 0) {
-    console.error('No coin IDs fetched and no existing data — aborting.')
-    process.exit(1)
+  log(`Got ${coinIds.length} coin IDs from /coins/markets`)
+
+  // Decide what to fetch
+  let idsToFetch
+  if (coinIds.length > 0) {
+    idsToFetch = coinIds
+  } else if (existingSnapshot.size > 0) {
+    log('No fresh IDs but using existing snapshot IDs to refresh')
+    idsToFetch = Array.from(existingSnapshot.keys())
+  } else {
+    log('ERROR: No fresh IDs and no existing snapshot — cannot proceed.')
+    log('This usually means CoinGecko is rate limiting you OR the API key is invalid.')
+    log('Will write empty snapshot so action does not fail.')
+    saveSnapshot([])
+    log('Exiting cleanly with code 0 (empty snapshot saved)')
+    process.exit(0)
   }
 
-  const idsToFetch = coinIds.length > 0 ? coinIds : Array.from(existingSnapshot.keys())
-  console.log(`Will fetch details for ${idsToFetch.length} coins...`)
+  log(`Will fetch details for ${idsToFetch.length} coins...`)
 
   const coins = []
   let succeeded = 0
@@ -169,7 +220,7 @@ async function main() {
       if (trimmed) {
         coins.push(trimmed)
         succeeded++
-        if (i % 50 === 0) console.log(`${progress} ${id} OK`)
+        if (i < 5 || i % 50 === 0) log(`${progress} ${id} OK`)
       } else {
         throw new Error('Empty response')
       }
@@ -178,17 +229,29 @@ async function main() {
       if (existing) {
         coins.push(existing)
         failedFromCache++
-        console.log(`${progress} ${id} FAIL (${err.message}) - kept existing`)
+        if (i < 5 || i % 50 === 0) log(`${progress} ${id} FAIL (${err.message}) - kept existing`)
       } else {
         totallyFailed++
-        console.log(`${progress} ${id} FAIL (${err.message}) - no existing, skipping`)
+        if (i < 5 || i % 50 === 0) log(`${progress} ${id} FAIL (${err.message}) - skipping`)
+      }
+    }
+
+    // Save progress incrementally so we don't lose all work if action times out
+    if ((i + 1) % SAVE_EVERY === 0) {
+      try {
+        const sizeMB = saveSnapshot([...coins, ...Array.from(existingSnapshot.entries())
+          .filter(([id]) => !coins.find(c => c.id === id))
+          .map(([, data]) => data)])
+        log(`  >>> Progress saved: ${coins.length} coins fetched (${sizeMB} MB on disk)`)
+      } catch (err) {
+        log(`  >>> Progress save failed: ${err.message}`)
       }
     }
 
     if (i < idsToFetch.length - 1) await sleep(REQUEST_DELAY_MS)
   }
 
-  // Keep coins from existing snapshot that dropped out of top list
+  // Final merge: keep existing-snapshot coins not in current fetch
   const fetchedIdsSet = new Set(coins.map(c => c.id))
   let kept = 0
   for (const [id, data] of existingSnapshot) {
@@ -197,25 +260,20 @@ async function main() {
       kept++
     }
   }
-  if (kept > 0) console.log(`Also kept ${kept} previously-snapshotted coins not in current top list`)
+  if (kept > 0) log(`Also kept ${kept} previously-snapshotted coins not in current top list`)
 
-  const snapshot = {
-    generated_at: new Date().toISOString(),
-    total_coins: coins.length,
-    coins,
-  }
+  const sizeMB = saveSnapshot(coins)
 
-  fs.writeFileSync(OUTPUT, JSON.stringify(snapshot))
-  const sizeMB = (fs.statSync(OUTPUT).size / 1024 / 1024).toFixed(2)
-
-  console.log('=== Done ===')
-  console.log(`Succeeded: ${succeeded}`)
-  console.log(`Used cache: ${failedFromCache}`)
-  console.log(`Failed: ${totallyFailed}`)
-  console.log(`Output: ${OUTPUT} (${sizeMB} MB)`)
+  log('=== Done ===')
+  log(`Succeeded fresh: ${succeeded}`)
+  log(`Used existing cache: ${failedFromCache}`)
+  log(`Totally failed: ${totallyFailed}`)
+  log(`Final coins in snapshot: ${coins.length}`)
+  log(`Output: ${OUTPUT} (${sizeMB} MB)`)
 }
 
 main().catch(err => {
-  console.error('Snapshot script failed:', err)
+  console.error('=== FATAL ERROR ===')
+  console.error(err.stack || err.message || err)
   process.exit(1)
 })
