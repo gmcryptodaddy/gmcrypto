@@ -1,78 +1,221 @@
-// lib/coin-snapshot.js
+// THIS IS THE SNAPSHOT SCRIPT — goes at scripts/snapshot-coins.js
+// Run by GitHub Action weekly. Run manually: `node scripts/snapshot-coins.js`
 //
-// Reads the coin snapshot JSON from public/coins-snapshot.json on the server.
-// The file is built by scripts/snapshot-coins.js (run weekly via GitHub Action).
+// Fetches detailed data for the top 1000 coins from CoinGecko and writes to
+// public/coins-snapshot.json. This is the "static" data that doesn't change
+// often: name, symbol, description, links, logo, ATH, ATL, supply info.
 //
-// Cached in memory after first read — server keeps the data warm and never
-// re-reads from disk.
+// Why this exists: hitting CoinGecko's /coins/{id} endpoint per page view
+// burns through the Demo plan rate limit. By snapshotting once per week,
+// we serve all static data from disk → zero CoinGecko calls per visit.
+//
+// Total runtime: ~45 minutes for 1000 coins (2.5s spacing per request to
+// stay under Demo plan's 30/min rate limit).
 
-import fs from 'fs'
-import path from 'path'
+const fs = require('fs')
+const path = require('path')
+const https = require('https')
 
-let cachedSnapshot = null
-let cachedMap = null
-let lastReadTime = 0
-const RE_READ_INTERVAL_MS = 5 * 60 * 1000  // re-check disk every 5 min in case file updated
+const OUTPUT = path.join(process.cwd(), 'public', 'coins-snapshot.json')
+const REQUEST_DELAY_MS = 2500
+const TOTAL_COINS = 1000
+const PER_PAGE = 100
+const TOTAL_PAGES = TOTAL_COINS / PER_PAGE
 
-function loadFromDisk() {
-  const filepath = path.join(process.cwd(), 'public', 'coins-snapshot.json')
+function fetchJson(url, headers = {}, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers }, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        return fetchJson(res.headers.location, headers, timeoutMs).then(resolve, reject)
+      }
+      if (res.statusCode !== 200) {
+        const err = new Error(`HTTP ${res.statusCode}`)
+        err.status = res.statusCode
+        return reject(err)
+      }
+      let data = ''
+      res.on('data', chunk => { data += chunk })
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)) }
+        catch (err) { reject(err) }
+      })
+    })
+    req.on('error', reject)
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error('Request timed out'))
+    })
+  })
+}
+
+function getHeaders() {
+  const h = { Accept: 'application/json' }
+  if (process.env.COINGECKO_API_KEY) {
+    h['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY
+  }
+  return h
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms))
+}
+
+function loadExistingSnapshot() {
   try {
-    if (!fs.existsSync(filepath)) {
-      console.warn('coins-snapshot.json does not exist — coin pages will fail until snapshot is built')
-      return null
+    if (fs.existsSync(OUTPUT)) {
+      const raw = fs.readFileSync(OUTPUT, 'utf8')
+      const parsed = JSON.parse(raw)
+      const map = new Map()
+      if (Array.isArray(parsed?.coins)) {
+        for (const c of parsed.coins) {
+          if (c?.id) map.set(c.id, c)
+        }
+      }
+      return map
     }
-    const raw = fs.readFileSync(filepath, 'utf8')
-    return JSON.parse(raw)
   } catch (err) {
-    console.error('Failed to load coins-snapshot.json:', err.message)
-    return null
+    console.warn('Could not load existing snapshot:', err.message)
+  }
+  return new Map()
+}
+
+function trimCoinForSnapshot(coin) {
+  if (!coin || !coin.id) return null
+  const md = coin.market_data || {}
+  return {
+    id: coin.id,
+    symbol: coin.symbol,
+    name: coin.name,
+    image: coin.image?.large || coin.image?.small || coin.image?.thumb || null,
+    market_cap_rank: coin.market_cap_rank || null,
+    categories: Array.isArray(coin.categories) ? coin.categories.slice(0, 3) : [],
+    description_en: (coin.description?.en || '').slice(0, 3000),
+    links: {
+      homepage: coin.links?.homepage?.[0] || null,
+      twitter_screen_name: coin.links?.twitter_screen_name || null,
+      github: coin.links?.repos_url?.github?.[0] || null,
+      subreddit_url: coin.links?.subreddit_url || null,
+      whitepaper: coin.links?.whitepaper || null,
+    },
+    market_data: {
+      ath_usd: md.ath?.usd ?? null,
+      ath_change_percentage_usd: md.ath_change_percentage?.usd ?? null,
+      ath_date_usd: md.ath_date?.usd ?? null,
+      atl_usd: md.atl?.usd ?? null,
+      atl_change_percentage_usd: md.atl_change_percentage?.usd ?? null,
+      atl_date_usd: md.atl_date?.usd ?? null,
+      circulating_supply: md.circulating_supply ?? null,
+      total_supply: md.total_supply ?? null,
+      max_supply: md.max_supply ?? null,
+    },
+    genesis_date: coin.genesis_date || null,
+    hashing_algorithm: coin.hashing_algorithm || null,
   }
 }
 
-function ensureLoaded() {
-  const now = Date.now()
-  if (cachedSnapshot && (now - lastReadTime) < RE_READ_INTERVAL_MS) {
-    return cachedSnapshot
+async function fetchCoinIds() {
+  console.log(`Fetching top ${TOTAL_COINS} coin IDs from /coins/markets...`)
+  const ids = []
+  for (let p = 1; p <= TOTAL_PAGES; p++) {
+    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${PER_PAGE}&page=${p}&sparkline=false`
+    try {
+      const data = await fetchJson(url, getHeaders())
+      if (Array.isArray(data)) {
+        for (const c of data) {
+          if (c?.id) ids.push(c.id)
+        }
+      }
+      console.log(`  Page ${p}/${TOTAL_PAGES}: got ${data.length} coins (total: ${ids.length})`)
+    } catch (err) {
+      console.warn(`  Page ${p} failed: ${err.message}`)
+    }
+    if (p < TOTAL_PAGES) await sleep(REQUEST_DELAY_MS)
   }
-  const snapshot = loadFromDisk()
-  if (snapshot) {
-    cachedSnapshot = snapshot
-    cachedMap = new Map()
-    if (Array.isArray(snapshot.coins)) {
-      for (const c of snapshot.coins) {
-        if (c?.id) cachedMap.set(c.id, c)
+  return ids
+}
+
+async function fetchCoinDetail(id) {
+  const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
+  return fetchJson(url, getHeaders())
+}
+
+async function main() {
+  console.log('=== CoinGecko Snapshot Build ===')
+  console.log(`API key: ${process.env.COINGECKO_API_KEY ? 'present' : 'MISSING (will be slower)'}`)
+
+  const existingSnapshot = loadExistingSnapshot()
+  console.log(`Existing snapshot: ${existingSnapshot.size} coins`)
+
+  const coinIds = await fetchCoinIds()
+  if (coinIds.length === 0 && existingSnapshot.size === 0) {
+    console.error('No coin IDs fetched and no existing data — aborting.')
+    process.exit(1)
+  }
+
+  const idsToFetch = coinIds.length > 0 ? coinIds : Array.from(existingSnapshot.keys())
+  console.log(`Will fetch details for ${idsToFetch.length} coins...`)
+
+  const coins = []
+  let succeeded = 0
+  let failedFromCache = 0
+  let totallyFailed = 0
+
+  for (let i = 0; i < idsToFetch.length; i++) {
+    const id = idsToFetch[i]
+    const progress = `[${i + 1}/${idsToFetch.length}]`
+
+    try {
+      const detail = await fetchCoinDetail(id)
+      const trimmed = trimCoinForSnapshot(detail)
+      if (trimmed) {
+        coins.push(trimmed)
+        succeeded++
+        if (i % 50 === 0) console.log(`${progress} ${id} OK`)
+      } else {
+        throw new Error('Empty response')
+      }
+    } catch (err) {
+      const existing = existingSnapshot.get(id)
+      if (existing) {
+        coins.push(existing)
+        failedFromCache++
+        console.log(`${progress} ${id} FAIL (${err.message}) - kept existing`)
+      } else {
+        totallyFailed++
+        console.log(`${progress} ${id} FAIL (${err.message}) - no existing, skipping`)
       }
     }
-    lastReadTime = now
+
+    if (i < idsToFetch.length - 1) await sleep(REQUEST_DELAY_MS)
   }
-  return cachedSnapshot
-}
 
-// Get one coin by id from the snapshot. Returns null if not found.
-export function getCoinFromSnapshot(id) {
-  ensureLoaded()
-  if (!cachedMap) return null
-  return cachedMap.get(id) || null
-}
-
-// Check if a coin exists in the snapshot
-export function snapshotHasCoin(id) {
-  ensureLoaded()
-  return cachedMap ? cachedMap.has(id) : false
-}
-
-// Get all snapshotted coin IDs (used by getStaticPaths if we ever pre-build)
-export function getAllSnapshotIds() {
-  ensureLoaded()
-  return cachedMap ? Array.from(cachedMap.keys()) : []
-}
-
-// Get snapshot metadata (when it was generated, total count)
-export function getSnapshotMeta() {
-  const s = ensureLoaded()
-  if (!s) return null
-  return {
-    generated_at: s.generated_at,
-    total_coins: s.total_coins,
+  // Keep coins from existing snapshot that dropped out of top list
+  const fetchedIdsSet = new Set(coins.map(c => c.id))
+  let kept = 0
+  for (const [id, data] of existingSnapshot) {
+    if (!fetchedIdsSet.has(id)) {
+      coins.push(data)
+      kept++
+    }
   }
+  if (kept > 0) console.log(`Also kept ${kept} previously-snapshotted coins not in current top list`)
+
+  const snapshot = {
+    generated_at: new Date().toISOString(),
+    total_coins: coins.length,
+    coins,
+  }
+
+  fs.writeFileSync(OUTPUT, JSON.stringify(snapshot))
+  const sizeMB = (fs.statSync(OUTPUT).size / 1024 / 1024).toFixed(2)
+
+  console.log('=== Done ===')
+  console.log(`Succeeded: ${succeeded}`)
+  console.log(`Used cache: ${failedFromCache}`)
+  console.log(`Failed: ${totallyFailed}`)
+  console.log(`Output: ${OUTPUT} (${sizeMB} MB)`)
 }
+
+main().catch(err => {
+  console.error('Snapshot script failed:', err)
+  process.exit(1)
+})
