@@ -1,18 +1,27 @@
 // components/TradingViewChart.js
 //
-// Embeds TradingView's Symbol Overview widget for a coin's price chart.
-// Zero CoinGecko API calls — TradingView handles all chart data.
+// Embeds TradingView's Symbol Overview widget for the coin chart.
 //
-// IMPORTANT: TradingView's embed script reads its config from the script tag's
-// TEXT CONTENT (not innerHTML). The script must be appended INSIDE a div that
-// has class="tradingview-widget-container__widget" — that's where the iframe
-// gets injected. Getting this structure wrong = chart shows header but no
-// actual chart canvas.
+// Critical setup notes (lessons learned):
+//   - When autosize=true, the WIDGET's inner div needs a CONCRETE height in
+//     pixels — calc(100% - 32px) doesn't work because parents may have no
+//     defined height. Iframe collapses to 0px otherwise.
+//   - Total height must accommodate: top header (~70px) + price row (~40px)
+//     + tabs row (~36px) + chart area (300px+ to look right) + copyright
+//     (~24px). Minimum sensible total is ~500px.
+//   - The script element must use `appendChild(createTextNode(...))` for
+//     its config — innerHTML doesn't always work for src-loaded scripts.
+//   - The wrapper div MUST have class="tradingview-widget-container" and
+//     contain a div with class="tradingview-widget-container__widget".
+//     Don't deviate from this structure.
 
 import { useEffect, useRef } from 'react'
 
+const CHART_HEIGHT = 500     // total height in pixels
+const WIDGET_HEIGHT = 472    // inner widget area (CHART_HEIGHT - copyright link)
+
 // Curated TradingView symbol mapping. Format: lowercase coin symbol → TV symbol.
-// For coins NOT in this map, we try BINANCE:{SYMBOL}USDT as a fallback.
+// For coins NOT in this map, we fall back to BINANCE:{SYMBOL}USDT.
 const TV_SYMBOL_OVERRIDES = {
   btc: 'BINANCE:BTCUSDT',
   eth: 'BINANCE:ETHUSDT',
@@ -86,40 +95,44 @@ export default function TradingViewChart({ symbol, coinName }) {
   useEffect(() => {
     if (!containerRef.current || !tvSymbol) return
 
-    // Build the EXACT structure TradingView expects:
-    //   <div class="tradingview-widget-container">  ← containerRef
-    //     <div class="tradingview-widget-container__widget"></div>  ← inner div for iframe
-    //     <script src="..." async>{config-as-textContent}</script>  ← script with TEXT not innerHTML
-    //   </div>
-    //
-    // Setting innerHTML on the script tag does NOT work — the TradingView script
-    // reads config from textContent. Use createTextNode or .text instead.
-
     const container = containerRef.current
-    container.innerHTML = '' // clear previous render
+    container.innerHTML = ''
 
-    // Inner widget div — this is where the iframe gets injected
+    // Build EXACT structure TradingView's embed script expects:
+    //   <div class="tradingview-widget-container">  ← outer (containerRef)
+    //     <div class="tradingview-widget-container__widget" style="height: 472px"></div>
+    //     <div class="tradingview-widget-copyright">...</div>
+    //     <script src="..." async>{config-as-textContent}</script>
+    //   </div>
+
+    // 1. Inner widget div with CONCRETE pixel height (this is critical)
     const widgetDiv = document.createElement('div')
     widgetDiv.className = 'tradingview-widget-container__widget'
-    widgetDiv.style.height = 'calc(100% - 32px)' // leave room for copyright link
+    widgetDiv.style.height = `${WIDGET_HEIGHT}px`
     widgetDiv.style.width = '100%'
     container.appendChild(widgetDiv)
 
-    // Copyright link (TradingView terms require attribution)
+    // 2. Copyright link (TradingView requires this for free widgets)
     const copyrightDiv = document.createElement('div')
     copyrightDiv.className = 'tradingview-widget-copyright'
-    copyrightDiv.innerHTML = `<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a>`
+    copyrightDiv.style.fontSize = '13px'
+    copyrightDiv.style.lineHeight = '32px'
+    copyrightDiv.style.textAlign = 'center'
+    copyrightDiv.innerHTML = `<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank" style="color: #2962FF; text-decoration: none;">Track all markets on TradingView</a>`
     container.appendChild(copyrightDiv)
 
-    // Build config object — keep it minimal and proven
+    // 3. Build config — note: do NOT include width/height when autosize=true
+    //    (they conflict). Just give it autosize and the parent's pixel height.
     const config = {
-      symbols: [[coinName || symbol || 'Symbol', tvSymbol + '|1D']],
+      symbols: [
+        [coinName || symbol || 'Symbol', tvSymbol + '|1D'],
+      ],
       chartOnly: false,
       width: '100%',
-      height: '100%',
+      height: WIDGET_HEIGHT,
       locale: 'en',
       colorTheme: 'dark',
-      autosize: true,
+      autosize: false,         // explicit pixel height instead — more reliable
       showVolume: false,
       showMA: false,
       hideDateRanges: false,
@@ -139,31 +152,25 @@ export default function TradingViewChart({ symbol, coinName }) {
       dateRanges: ['1d|1', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
     }
 
-    // Create script tag the way TradingView expects:
-    // - src attribute pointing to embed script
-    // - JSON config as TEXT CONTENT (NOT innerHTML, NOT JSON.stringify into innerHTML)
+    // 4. Script — use textContent (via createTextNode) NOT innerHTML
     const script = document.createElement('script')
     script.type = 'text/javascript'
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js'
     script.async = true
-    // Critical: use appendChild(textNode) so the JSON becomes the script's text content
     script.appendChild(document.createTextNode(JSON.stringify(config)))
     container.appendChild(script)
 
-    // Cleanup: TradingView creates iframes that we want to remove on unmount
     return () => {
-      if (container) {
-        container.innerHTML = ''
-      }
+      if (container) container.innerHTML = ''
     }
   }, [tvSymbol, coinName, symbol])
 
-  // Outer container — needs explicit height for autosize to work
+  // Outer container with concrete pixel height
   return (
     <div
       className="tradingview-widget-container"
       ref={containerRef}
-      style={{ height: 480, width: '100%' }}
+      style={{ height: CHART_HEIGHT, width: '100%' }}
     />
   )
 }
