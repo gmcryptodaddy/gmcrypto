@@ -2,11 +2,6 @@ name: Weekly Coin Snapshot
 
 # Runs the snapshot script weekly, commits the updated snapshot, and pushes it.
 # Vercel auto-deploys after the push.
-#
-# IMPORTANT: For this workflow to be able to push commits back to the repo,
-# you MUST also enable "Read and write permissions" in:
-#   GitHub repo → Settings → Actions → General → Workflow permissions
-# (This is in addition to the `permissions: contents: write` block below.)
 
 on:
   schedule:
@@ -19,14 +14,12 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # Snapshot ~45 min, this gives buffer
+    timeout-minutes: 120  # Up to 2 hours for snapshot (500 coins × 5s + retries)
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Use the default GITHUB_TOKEN to authenticate. fetch-depth: 0
-          # is needed if we ever do anything with git history.
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
