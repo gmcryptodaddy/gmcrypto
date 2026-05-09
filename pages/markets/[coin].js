@@ -1,16 +1,15 @@
 // pages/markets/[coin].js
 //
-// Architecture:
-//   1. PRIMARY: Read static data (name, description, links, ATH/ATL, supply,
-//      logo) from public/coins-snapshot.json. Built weekly. Zero API calls.
-//   2. FALLBACK: If coin isn't in snapshot, fetch from CoinGecko directly
-//      and cache for 1 hour. So newly-listed coins or coins outside top 1000
-//      still work without manual snapshot rebuild.
-//   3. Live price + 24h change fetched client-side every 30s via /api/coin-price
-//   4. Chart is TradingView widget (zero CoinGecko calls).
+// Strategy (avoids the cached-notFound bug in Next.js issue #21453):
+//   1. Try snapshot first → instant, zero API calls
+//   2. Try live CoinGecko fetch → fallback for coins outside snapshot
+//   3. If both fail with TRANSIENT error → return placeholder props, NEVER
+//      return notFound for transient errors. Client-side useEffect retries
+//      via /api/coin-detail. Page is always 200, never gets stuck as 404.
+//   4. Only return notFound for REAL 404 from CoinGecko (coin doesn't exist).
 //
-// This means coin pages always work — for snapshot coins instantly, for
-// non-snapshot coins after a one-time CoinGecko fetch (then cached).
+// Live price + 24h change fetched client-side every 30s via /api/coin-price.
+// Chart is TradingView widget (zero CoinGecko calls).
 
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
@@ -32,7 +31,6 @@ import {
 
 const SITE_URL = 'https://www.gmcrypto.news'
 
-// TradingView widget loads dynamically (client-side only)
 const TradingViewChart = dynamic(() => import('../../components/TradingViewChart'), {
   ssr: false,
   loading: () => <div className="coin-chart-loading" style={{ height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
@@ -41,16 +39,9 @@ const TradingViewChart = dynamic(() => import('../../components/TradingViewChart
 function timeAgo(dateStr) {
   if (!dateStr) return ''
   const diff = (Date.now() - new Date(dateStr)) / 1000
-  if (diff < 3600) {
-    const m = Math.floor(diff / 60)
-    return `${m}m ago`
-  }
-  if (diff < 86400) {
-    const h = Math.floor(diff / 3600)
-    return `${h}h ago`
-  }
-  const d = Math.floor(diff / 86400)
-  return `${d}d ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
 }
 
 function buildMetaDescription(coin, livePrice, liveChange) {
@@ -80,16 +71,57 @@ function buildMetaTitle(coin, livePrice) {
   return `${name} (${symbol}) Price, Chart, Market Cap — GM Crypto News`
 }
 
-export default function CoinPage({ coin, relatedArticles }) {
+function slugToDisplayName(slug) {
+  if (!slug) return 'Coin'
+  return slug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+}
+
+export default function CoinPage({ coin: initialCoin, relatedArticles, isPlaceholder, slug }) {
+  const [coin, setCoin] = useState(initialCoin)
   const [livePrice, setLivePrice] = useState(null)
   const [liveChange, setLiveChange] = useState(null)
   const [liveMarketCap, setLiveMarketCap] = useState(null)
   const [liveVolume, setLiveVolume] = useState(null)
   const [priceLoading, setPriceLoading] = useState(true)
   const [showFullAbout, setShowFullAbout] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
+  // If we got a placeholder (CoinGecko was down at build), retry client-side
   useEffect(() => {
-    if (!coin?.id) return
+    if (!isPlaceholder || !slug) return
+
+    let cancelled = false
+    setRetrying(true)
+
+    const tryFetch = async (attempt = 1) => {
+      try {
+        const res = await fetch(`/api/coin-detail?slug=${encodeURIComponent(slug)}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        if (cancelled) return
+        if (data && data.coin) {
+          setCoin(data.coin)
+          setRetrying(false)
+        } else {
+          throw new Error('Empty response')
+        }
+      } catch (err) {
+        if (cancelled) return
+        if (attempt < 3) {
+          setTimeout(() => tryFetch(attempt + 1), 2000 * attempt)
+        } else {
+          setRetrying(false)
+        }
+      }
+    }
+
+    tryFetch()
+    return () => { cancelled = true }
+  }, [isPlaceholder, slug])
+
+  // Fetch live price every 30s (only when we have real coin data)
+  useEffect(() => {
+    if (!coin?.id || coin._placeholder) return
 
     let cancelled = false
     let intervalId = null
@@ -115,33 +147,82 @@ export default function CoinPage({ coin, relatedArticles }) {
 
     fetchPrice()
     intervalId = setInterval(fetchPrice, 30000)
-
     return () => {
       cancelled = true
       if (intervalId) clearInterval(intervalId)
     }
-  }, [coin?.id])
+  }, [coin?.id, coin?._placeholder])
 
-  if (!coin) {
+  // PLACEHOLDER STATE — CoinGecko was unavailable, show loading + retry
+  if (!coin || coin._placeholder) {
+    const displayName = coin?.name || slugToDisplayName(slug)
     return (
       <>
         <Head>
-          <title>Coin not found — GM Crypto News</title>
+          <title>{displayName} — GM Crypto News</title>
+          <meta name="description" content={`${displayName} live price, chart, and market data.`} />
           <meta name="robots" content="noindex" />
         </Head>
         <Ticker />
         <Navbar />
-        <div style={{ padding: '80px 24px', textAlign: 'center', color: 'var(--text2)' }}>
-          <h2>Coin not found</h2>
-          <Link href="/markets" style={{ color: 'var(--text)', marginTop: 16, display: 'block', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-            ← Back to markets
-          </Link>
+        <div className="coin-page">
+          <div className="coin-breadcrumbs">
+            <Link href="/">Home</Link>
+            <span className="sep">/</span>
+            <Link href="/markets">Markets</Link>
+            <span className="sep">/</span>
+            <span>{displayName}</span>
+          </div>
+
+          <section className="coin-header">
+            <div className="coin-header-top">
+              <div className="coin-header-identity">
+                <div>
+                  <h1 className="coin-header-name">{displayName}</h1>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+            {retrying ? (
+              <>
+                <div style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 12 }}>
+                  Loading {displayName} data…
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text3)' }}>
+                  Fetching from CoinGecko, this may take a few seconds.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 12 }}>
+                  Couldn't load {displayName} data
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>
+                  CoinGecko may be busy. Try again in a moment.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="markets-retry-btn"
+                  style={{ marginRight: 12 }}
+                >
+                  Refresh
+                </button>
+                <Link href="/markets" className="coin-link-btn">
+                  ← Back to markets
+                </Link>
+              </>
+            )}
+          </div>
+          <Footer />
         </div>
-        <Footer />
       </>
     )
   }
 
+  // NORMAL STATE — full page renders
   const md = coin.market_data || {}
   const ath = md.ath_usd
   const athChange = md.ath_change_percentage_usd
@@ -182,9 +263,7 @@ export default function CoinPage({ coin, relatedArticles }) {
     ...coin,
     image: { large: coin.image },
     market_cap_rank: rank,
-    market_data: {
-      current_price: livePrice ? { usd: livePrice } : undefined,
-    },
+    market_data: { current_price: livePrice ? { usd: livePrice } : undefined },
     description: { en: description },
   }
 
@@ -194,7 +273,6 @@ export default function CoinPage({ coin, relatedArticles }) {
         <title>{metaTitle}</title>
         <meta name="description" content={metaDescription} />
         <link rel="canonical" href={pageUrl} />
-
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDescription} />
         <meta property="og:image" content={ogImage} />
@@ -203,7 +281,6 @@ export default function CoinPage({ coin, relatedArticles }) {
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GM Crypto News" />
         <meta property="og:locale" content="en_US" />
-
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={metaTitle} />
         <meta name="twitter:description" content={metaDescription} />
@@ -396,8 +473,6 @@ export async function getStaticPaths() {
 }
 
 // Convert a fresh CoinGecko detail response to our snapshot format
-// so the page render code (above) doesn't need to know whether data
-// came from snapshot or fresh fetch.
 function normalizeCoinFromCoinGecko(coin) {
   if (!coin || !coin.id) return null
   const md = coin.market_data || {}
@@ -435,73 +510,82 @@ function normalizeCoinFromCoinGecko(coin) {
 export async function getStaticProps({ params }) {
   const slug = params.coin
 
-  // STEP 1: Try snapshot first (zero API calls)
+  // STEP 1: Try snapshot (zero API calls, instant)
   let coin = getCoinFromSnapshot(slug)
 
-  // STEP 2: If not in snapshot, fall back to live CoinGecko fetch (1 API call)
-  // This way coins outside the snapshot still work — they just take an extra
-  // second on first load, then ISR caches the result for an hour.
+  // STEP 2: Not in snapshot → try live CoinGecko fetch (1 API call)
+  let transientError = false
   if (!coin) {
     try {
       const fresh = await getCoinDetails(slug)
       coin = normalizeCoinFromCoinGecko(fresh)
     } catch (err) {
-      // Real 404 (coin truly doesn't exist) → notFound for 1 hour
+      // Real 404 from CoinGecko → coin doesn't exist, cache for 1 hour
       if (err.status === 404) {
         return { notFound: true, revalidate: 3600 }
       }
-      // Transient error (rate limit, network) → notFound for 1 minute so
-      // we retry soon. Better than throwing 500.
-      console.warn(`Coin ${slug} not in snapshot AND live fetch failed: ${err.message}`)
-      return { notFound: true, revalidate: 60 }
+      // Transient error (rate limit, network, etc) → fall through to placeholder
+      console.warn(`Live fetch failed for ${slug}: ${err.message} (will use placeholder)`)
+      transientError = true
     }
   }
 
-  if (!coin) {
-    return { notFound: true, revalidate: 60 }
-  }
+  // STEP 3: If we have coin data, fetch related articles + render normally
+  if (coin) {
+    let relatedArticles = []
+    try {
+      const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
+      const name = coin.name
+      if (name) {
+        const useSymbol = symbol && symbol.length >= 3
+        const query = useSymbol
+          ? `*[_type == "post" && (
+              title match $name ||
+              title match $symbol ||
+              category match $name ||
+              category match $symbol ||
+              excerpt match $name
+            )] | order(publishedAt desc)[0...4] {
+              _id, title, slug, mainImage, category, publishedAt, excerpt
+            }`
+          : `*[_type == "post" && (
+              title match $name ||
+              category match $name ||
+              excerpt match $name
+            )] | order(publishedAt desc)[0...4] {
+              _id, title, slug, mainImage, category, publishedAt, excerpt
+            }`
 
-  // STEP 3: Best-effort related articles from Sanity
-  let relatedArticles = []
-  try {
-    const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
-    const name = coin.name
-    if (name) {
-      const useSymbol = symbol && symbol.length >= 3
-      const query = useSymbol
-        ? `*[_type == "post" && (
-            title match $name ||
-            title match $symbol ||
-            category match $name ||
-            category match $symbol ||
-            excerpt match $name
-          )] | order(publishedAt desc)[0...4] {
-            _id, title, slug, mainImage, category, publishedAt, excerpt
-          }`
-        : `*[_type == "post" && (
-            title match $name ||
-            category match $name ||
-            excerpt match $name
-          )] | order(publishedAt desc)[0...4] {
-            _id, title, slug, mainImage, category, publishedAt, excerpt
-          }`
+        const queryParams = useSymbol
+          ? { name: `*${name}*`, symbol: `*${symbol}*` }
+          : { name: `*${name}*` }
 
-      const queryParams = useSymbol
-        ? { name: `*${name}*`, symbol: `*${symbol}*` }
-        : { name: `*${name}*` }
-
-      relatedArticles = await client.fetch(query, queryParams)
+        relatedArticles = await client.fetch(query, queryParams)
+      }
+    } catch (err) {
+      console.warn(`Related articles failed for ${slug}: ${err.message}`)
     }
-  } catch (err) {
-    console.warn(`Related articles failed for ${slug}: ${err.message}`)
+
+    return {
+      props: {
+        coin,
+        relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
+        isPlaceholder: false,
+        slug,
+      },
+      revalidate: 3600,
+    }
   }
 
+  // STEP 4: Both snapshot and live fetch failed (transient) → return placeholder.
+  // This avoids the cached-notFound bug. Page renders 200, client retries via API.
   return {
     props: {
-      coin,
-      relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
+      coin: { id: slug, _placeholder: true },
+      relatedArticles: [],
+      isPlaceholder: true,
+      slug,
     },
-    // Refresh every hour (snapshot data) or every 5 min (fresh fetched)
-    revalidate: 3600,
+    revalidate: 30, // try ISR refresh sooner
   }
 }
