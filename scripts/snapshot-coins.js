@@ -1,35 +1,32 @@
 // THIS IS THE SNAPSHOT SCRIPT — goes at scripts/snapshot-coins.js
 // Run by GitHub Action weekly. Run manually: `node scripts/snapshot-coins.js`
 //
-// Fetches detailed data for the top 500 coins from CoinGecko and writes to
-// public/coins-snapshot.json.
+// Fetches top 200 coins from CoinGecko, writes public/coins-snapshot.json.
 //
-// Why 500 instead of 1000:
-//   - CoinGecko Demo API plan: 30 calls/min hard limit + ~10K/month quota
-//   - With 5s delay between calls (12/min, half the limit) and retries,
-//     500 coins takes ~50 minutes
-//   - 1000 coins would need 100 minutes and risk hitting monthly quota
-//   - For coins outside the top 500, [coin].js falls back to live fetch
+// Why top 200:
+//   - 200 × 5s delay = ~17 min minimum (well under timeout, even with retries)
+//   - Top 200 covers ~99% of search traffic
+//   - For coins outside top 200, [coin].js falls back to live CoinGecko fetch
 //
-// This version is bulletproof:
-//   - 5 second delay between requests (well under rate limit)
-//   - Each detail fetch retried up to 3 times with exponential backoff
-//   - Saves progress every 25 coins (resilient to mid-run failures)
-//   - Aggressive logging
+// Defensive features:
+//   - 5 second delay between calls (12/min, well under 30/min Demo limit)
+//   - 3 retries per coin with backoff on rate limits
+//   - Saves progress every 25 coins
 //   - Always writes a snapshot file (never aborts with no data)
+//   - Aggressive logging for debugging
 
 const fs = require('fs')
 const path = require('path')
 const https = require('https')
 
 const OUTPUT = path.join(process.cwd(), 'public', 'coins-snapshot.json')
-const REQUEST_DELAY_MS = 5000        // 5 sec between calls = 12/min, very safe
-const RETRY_DELAY_MS = 30000         // 30 sec wait after rate-limit hit
+const REQUEST_DELAY_MS = 5000        // 5 sec between requests = 12/min, safe
+const RETRY_DELAY_MS = 30000         // 30 sec wait after rate-limit
 const MAX_RETRIES = 3
-const TOTAL_COINS = 500              // Top N coins to snapshot
+const TOTAL_COINS = 200              // Top N coins to snapshot
 const PER_PAGE = 100
 const TOTAL_PAGES = TOTAL_COINS / PER_PAGE
-const SAVE_EVERY = 25                // Save partial snapshot every N coins
+const SAVE_EVERY = 25
 
 function log(msg) {
   process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`)
@@ -145,7 +142,6 @@ function saveSnapshot(coins) {
   return (fs.statSync(OUTPUT).size / 1024 / 1024).toFixed(2)
 }
 
-// Fetch a coin detail with retries on rate-limit/network errors
 async function fetchCoinDetailWithRetry(id) {
   const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
   let lastErr
@@ -154,14 +150,11 @@ async function fetchCoinDetailWithRetry(id) {
       return await fetchJson(url, getHeaders())
     } catch (err) {
       lastErr = err
-      // Don't retry 404 — coin doesn't exist
       if (err.status === 404) throw err
-      // For rate limit (429), wait longer
       if (err.status === 429) {
         log(`    rate-limited on ${id}, waiting ${RETRY_DELAY_MS / 1000}s before retry ${attempt}/${MAX_RETRIES}`)
         await sleep(RETRY_DELAY_MS)
       } else if (attempt < MAX_RETRIES) {
-        // For other errors, exponential backoff
         const wait = 5000 * attempt
         log(`    ${id} attempt ${attempt} failed (${err.message}), retrying in ${wait}ms`)
         await sleep(wait)
@@ -192,9 +185,7 @@ async function fetchCoinIds() {
         }
       } catch (err) {
         log(`  Page ${p} attempt ${attempt} FAILED: ${err.message}`)
-        if (err.status === 429) {
-          await sleep(RETRY_DELAY_MS)
-        }
+        if (err.status === 429) await sleep(RETRY_DELAY_MS)
       }
       if (attempt < MAX_RETRIES) await sleep(5000)
     }
@@ -214,14 +205,14 @@ async function main() {
   log(`Existing snapshot: ${existingSnapshot.size} coins`)
 
   const coinIds = await fetchCoinIds()
-  log(`Got ${coinIds.length} coin IDs from /coins/markets`)
+  log(`Got ${coinIds.length} coin IDs`)
 
   let idsToFetch
   if (coinIds.length > 0) {
     idsToFetch = coinIds
   } else if (existingSnapshot.size > 0) {
     log('No fresh IDs but using existing snapshot IDs')
-    idsToFetch = Array.from(existingSnapshot.keys())
+    idsToFetch = Array.from(existingSnapshot.keys()).slice(0, TOTAL_COINS)
   } else {
     log('ERROR: no fresh IDs and no existing snapshot')
     log('Writing empty snapshot so action does not fail')
@@ -229,7 +220,8 @@ async function main() {
     process.exit(0)
   }
 
-  log(`Will fetch details for ${idsToFetch.length} coins (this will take ~${Math.round(idsToFetch.length * REQUEST_DELAY_MS / 1000 / 60)} minutes)`)
+  const expectedMin = Math.round(idsToFetch.length * REQUEST_DELAY_MS / 1000 / 60)
+  log(`Will fetch details for ${idsToFetch.length} coins (~${expectedMin} min minimum)`)
 
   const coins = []
   let succeeded = 0, failedFromCache = 0, totallyFailed = 0
@@ -260,7 +252,6 @@ async function main() {
       }
     }
 
-    // Save progress periodically
     if ((i + 1) % SAVE_EVERY === 0) {
       try {
         const sizeMB = saveSnapshot(coins)
@@ -273,7 +264,7 @@ async function main() {
     if (i < idsToFetch.length - 1) await sleep(REQUEST_DELAY_MS)
   }
 
-  // Merge with existing snapshot to keep coins that dropped out of top list
+  // Keep coins from existing snapshot that aren't in current top list
   const fetchedIdsSet = new Set(coins.map(c => c.id))
   let kept = 0
   for (const [id, data] of existingSnapshot) {
