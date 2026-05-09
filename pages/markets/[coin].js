@@ -1,23 +1,16 @@
 // pages/markets/[coin].js
 //
 // Architecture:
-//   - Static data (description, links, logo, ATH/ATL, supply) comes from
-//     public/coins-snapshot.json — built weekly by scripts/snapshot-coins.js.
-//     Zero CoinGecko calls per page view. Pages always render.
-//   - Live price + 24h change is fetched client-side from /api/coin-price
-//     using CoinGecko's lightweight /simple/price endpoint. ~30s refresh.
-//   - Chart is a TradingView widget — zero CoinGecko API hit.
+//   1. PRIMARY: Read static data (name, description, links, ATH/ATL, supply,
+//      logo) from public/coins-snapshot.json. Built weekly. Zero API calls.
+//   2. FALLBACK: If coin isn't in snapshot, fetch from CoinGecko directly
+//      and cache for 1 hour. So newly-listed coins or coins outside top 1000
+//      still work without manual snapshot rebuild.
+//   3. Live price + 24h change fetched client-side every 30s via /api/coin-price
+//   4. Chart is TradingView widget (zero CoinGecko calls).
 //
-// Result:
-//   - Coin pages always work, never rate-limited
-//   - Charts are professional + free
-//   - We use ~1 cheap CoinGecko call per coin page view (just for live price)
-//
-// Coins in snapshot but not on Binance: TradingView chart shows "symbol not
-// found." Fixable by adding overrides in components/TradingViewChart.js
-//
-// Coins NOT in snapshot (outside top 1000 by market cap): page returns 404.
-// Snapshot refreshes weekly; new top-1000 coins appear within a week.
+// This means coin pages always work — for snapshot coins instantly, for
+// non-snapshot coins after a one-time CoinGecko fetch (then cached).
 
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
@@ -30,6 +23,7 @@ import { CryptocurrencySchema, BreadcrumbSchema } from '../../components/Structu
 import { client, urlFor } from '../../lib/sanity'
 import { getCoinFromSnapshot } from '../../lib/coin-snapshot'
 import {
+  getCoinDetails,
   formatPrice,
   formatBigNumber,
   formatPercent,
@@ -41,7 +35,7 @@ const SITE_URL = 'https://www.gmcrypto.news'
 // TradingView widget loads dynamically (client-side only)
 const TradingViewChart = dynamic(() => import('../../components/TradingViewChart'), {
   ssr: false,
-  loading: () => <div className="coin-chart-loading" style={{ height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
+  loading: () => <div className="coin-chart-loading" style={{ height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
 })
 
 function timeAgo(dateStr) {
@@ -87,16 +81,13 @@ function buildMetaTitle(coin, livePrice) {
 }
 
 export default function CoinPage({ coin, relatedArticles }) {
-  // Live price state — fetched client-side
   const [livePrice, setLivePrice] = useState(null)
   const [liveChange, setLiveChange] = useState(null)
   const [liveMarketCap, setLiveMarketCap] = useState(null)
   const [liveVolume, setLiveVolume] = useState(null)
   const [priceLoading, setPriceLoading] = useState(true)
-
   const [showFullAbout, setShowFullAbout] = useState(false)
 
-  // Fetch live price on mount, then refresh every 30s while page is open
   useEffect(() => {
     if (!coin?.id) return
 
@@ -118,13 +109,12 @@ export default function CoinPage({ coin, relatedArticles }) {
         }
         setPriceLoading(false)
       } catch (err) {
-        // Silent fail — page still works without live price
         setPriceLoading(false)
       }
     }
 
     fetchPrice()
-    intervalId = setInterval(fetchPrice, 30000) // refresh every 30s
+    intervalId = setInterval(fetchPrice, 30000)
 
     return () => {
       cancelled = true
@@ -152,7 +142,6 @@ export default function CoinPage({ coin, relatedArticles }) {
     )
   }
 
-  // Static data from snapshot
   const md = coin.market_data || {}
   const ath = md.ath_usd
   const athChange = md.ath_change_percentage_usd
@@ -189,7 +178,6 @@ export default function CoinPage({ coin, relatedArticles }) {
 
   const isUp24h = typeof liveChange === 'number' && liveChange >= 0
 
-  // Build coin object for schema (combines static + live data)
   const schemaCoin = {
     ...coin,
     image: { large: coin.image },
@@ -407,18 +395,73 @@ export async function getStaticPaths() {
   }
 }
 
+// Convert a fresh CoinGecko detail response to our snapshot format
+// so the page render code (above) doesn't need to know whether data
+// came from snapshot or fresh fetch.
+function normalizeCoinFromCoinGecko(coin) {
+  if (!coin || !coin.id) return null
+  const md = coin.market_data || {}
+  return {
+    id: coin.id,
+    symbol: coin.symbol,
+    name: coin.name,
+    image: coin.image?.large || coin.image?.small || coin.image?.thumb || null,
+    market_cap_rank: coin.market_cap_rank || null,
+    categories: Array.isArray(coin.categories) ? coin.categories.slice(0, 3) : [],
+    description_en: (coin.description?.en || '').slice(0, 3000),
+    links: {
+      homepage: coin.links?.homepage?.[0] || null,
+      twitter_screen_name: coin.links?.twitter_screen_name || null,
+      github: coin.links?.repos_url?.github?.[0] || null,
+      subreddit_url: coin.links?.subreddit_url || null,
+      whitepaper: coin.links?.whitepaper || null,
+    },
+    market_data: {
+      ath_usd: md.ath?.usd ?? null,
+      ath_change_percentage_usd: md.ath_change_percentage?.usd ?? null,
+      ath_date_usd: md.ath_date?.usd ?? null,
+      atl_usd: md.atl?.usd ?? null,
+      atl_change_percentage_usd: md.atl_change_percentage?.usd ?? null,
+      atl_date_usd: md.atl_date?.usd ?? null,
+      circulating_supply: md.circulating_supply ?? null,
+      total_supply: md.total_supply ?? null,
+      max_supply: md.max_supply ?? null,
+    },
+    genesis_date: coin.genesis_date || null,
+    hashing_algorithm: coin.hashing_algorithm || null,
+  }
+}
+
 export async function getStaticProps({ params }) {
   const slug = params.coin
-  const coin = getCoinFromSnapshot(slug)
 
+  // STEP 1: Try snapshot first (zero API calls)
+  let coin = getCoinFromSnapshot(slug)
+
+  // STEP 2: If not in snapshot, fall back to live CoinGecko fetch (1 API call)
+  // This way coins outside the snapshot still work — they just take an extra
+  // second on first load, then ISR caches the result for an hour.
   if (!coin) {
-    // Coin not in our snapshot. Either it's outside top 1000 or doesn't exist.
-    // Cache the not-found for 1 hour — snapshot refreshes weekly so a new
-    // top-1000 coin will appear within a week.
-    return { notFound: true, revalidate: 3600 }
+    try {
+      const fresh = await getCoinDetails(slug)
+      coin = normalizeCoinFromCoinGecko(fresh)
+    } catch (err) {
+      // Real 404 (coin truly doesn't exist) → notFound for 1 hour
+      if (err.status === 404) {
+        return { notFound: true, revalidate: 3600 }
+      }
+      // Transient error (rate limit, network) → notFound for 1 minute so
+      // we retry soon. Better than throwing 500.
+      console.warn(`Coin ${slug} not in snapshot AND live fetch failed: ${err.message}`)
+      return { notFound: true, revalidate: 60 }
+    }
   }
 
-  // Fetch related articles from Sanity (best-effort, never fails the page)
+  if (!coin) {
+    return { notFound: true, revalidate: 60 }
+  }
+
+  // STEP 3: Best-effort related articles from Sanity
   let relatedArticles = []
   try {
     const symbol = coin.symbol ? coin.symbol.toUpperCase() : null
@@ -458,8 +501,7 @@ export async function getStaticProps({ params }) {
       coin,
       relatedArticles: Array.isArray(relatedArticles) ? relatedArticles : [],
     },
-    // Snapshot refreshes weekly via GitHub Action. Revalidate every hour
-    // so deployed app picks up new snapshot within an hour after push.
+    // Refresh every hour (snapshot data) or every 5 min (fresh fetched)
     revalidate: 3600,
   }
 }
