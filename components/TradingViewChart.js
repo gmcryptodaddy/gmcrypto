@@ -1,16 +1,17 @@
 // components/TradingViewChart.js
 //
 // Embeds TradingView's Symbol Overview widget for a coin's price chart.
-// Zero CoinGecko API calls — TradingView handles all the chart data.
+// Zero CoinGecko API calls — TradingView handles all chart data.
 //
-// Symbol format: "EXCHANGE:PAIR" e.g., "BINANCE:BTCUSDT" or "COINBASE:ETHUSD"
-// We map common coin symbols to known TradingView symbols. For unknown coins,
-// we attempt BINANCE:{SYMBOL}USDT as a sensible default — TradingView will
-// show "Symbol not found" if the pair doesn't exist.
+// IMPORTANT: TradingView's embed script reads its config from the script tag's
+// TEXT CONTENT (not innerHTML). The script must be appended INSIDE a div that
+// has class="tradingview-widget-container__widget" — that's where the iframe
+// gets injected. Getting this structure wrong = chart shows header but no
+// actual chart canvas.
 
 import { useEffect, useRef } from 'react'
 
-// Curated mapping for top coins. Format: lowercase symbol → TradingView symbol.
+// Curated TradingView symbol mapping. Format: lowercase coin symbol → TV symbol.
 // For coins NOT in this map, we try BINANCE:{SYMBOL}USDT as a fallback.
 const TV_SYMBOL_OVERRIDES = {
   btc: 'BINANCE:BTCUSDT',
@@ -34,7 +35,7 @@ const TV_SYMBOL_OVERRIDES = {
   near: 'BINANCE:NEARUSDT',
   apt: 'BINANCE:APTUSDT',
   icp: 'BINANCE:ICPUSDT',
-  xmr: 'KRAKEN:XMRUSD',  // Monero often delisted from Binance
+  xmr: 'KRAKEN:XMRUSD',
   xlm: 'BINANCE:XLMUSDT',
   etc: 'BINANCE:ETCUSDT',
   atom: 'BINANCE:ATOMUSDT',
@@ -75,8 +76,6 @@ function resolveTvSymbol(coinSymbol) {
   if (!coinSymbol) return null
   const lower = coinSymbol.toLowerCase()
   if (TV_SYMBOL_OVERRIDES[lower]) return TV_SYMBOL_OVERRIDES[lower]
-  // Default: assume Binance USDT pair. TradingView will show "Symbol not found"
-  // if the coin isn't on Binance, which is a known limitation we accept.
   return `BINANCE:${coinSymbol.toUpperCase()}USDT`
 }
 
@@ -87,21 +86,34 @@ export default function TradingViewChart({ symbol, coinName }) {
   useEffect(() => {
     if (!containerRef.current || !tvSymbol) return
 
-    // Clear previous widget if symbol changed
-    containerRef.current.innerHTML = ''
+    // Build the EXACT structure TradingView expects:
+    //   <div class="tradingview-widget-container">  ← containerRef
+    //     <div class="tradingview-widget-container__widget"></div>  ← inner div for iframe
+    //     <script src="..." async>{config-as-textContent}</script>  ← script with TEXT not innerHTML
+    //   </div>
+    //
+    // Setting innerHTML on the script tag does NOT work — the TradingView script
+    // reads config from textContent. Use createTextNode or .text instead.
 
-    const widgetWrap = document.createElement('div')
-    widgetWrap.className = 'tradingview-widget-container__widget'
-    widgetWrap.style.height = '100%'
-    widgetWrap.style.width = '100%'
-    containerRef.current.appendChild(widgetWrap)
+    const container = containerRef.current
+    container.innerHTML = '' // clear previous render
 
-    const script = document.createElement('script')
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js'
-    script.type = 'text/javascript'
-    script.async = true
-    script.innerHTML = JSON.stringify({
-      symbols: [[coinName || symbol, tvSymbol + '|1D']],
+    // Inner widget div — this is where the iframe gets injected
+    const widgetDiv = document.createElement('div')
+    widgetDiv.className = 'tradingview-widget-container__widget'
+    widgetDiv.style.height = 'calc(100% - 32px)' // leave room for copyright link
+    widgetDiv.style.width = '100%'
+    container.appendChild(widgetDiv)
+
+    // Copyright link (TradingView terms require attribution)
+    const copyrightDiv = document.createElement('div')
+    copyrightDiv.className = 'tradingview-widget-copyright'
+    copyrightDiv.innerHTML = `<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a>`
+    container.appendChild(copyrightDiv)
+
+    // Build config object — keep it minimal and proven
+    const config = {
+      symbols: [[coinName || symbol || 'Symbol', tvSymbol + '|1D']],
       chartOnly: false,
       width: '100%',
       height: '100%',
@@ -121,24 +133,37 @@ export default function TradingViewChart({ symbol, coinName }) {
       valuesTracking: '1',
       changeMode: 'price-and-percent',
       chartType: 'area',
-      maLineColor: '#2962FF',
-      maLineWidth: 1,
-      maLength: 9,
       headerFontSize: 'medium',
       lineWidth: 2,
       lineType: 0,
       dateRanges: ['1d|1', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
-    })
-    containerRef.current.appendChild(script)
+    }
 
+    // Create script tag the way TradingView expects:
+    // - src attribute pointing to embed script
+    // - JSON config as TEXT CONTENT (NOT innerHTML, NOT JSON.stringify into innerHTML)
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js'
+    script.async = true
+    // Critical: use appendChild(textNode) so the JSON becomes the script's text content
+    script.appendChild(document.createTextNode(JSON.stringify(config)))
+    container.appendChild(script)
+
+    // Cleanup: TradingView creates iframes that we want to remove on unmount
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = ''
+      if (container) {
+        container.innerHTML = ''
       }
     }
   }, [tvSymbol, coinName, symbol])
 
+  // Outer container — needs explicit height for autosize to work
   return (
-    <div className="tradingview-widget-container" ref={containerRef} style={{ height: 460, width: '100%' }} />
+    <div
+      className="tradingview-widget-container"
+      ref={containerRef}
+      style={{ height: 480, width: '100%' }}
+    />
   )
 }
