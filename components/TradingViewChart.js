@@ -1,27 +1,32 @@
 // components/TradingViewChart.js
 //
-// Embeds TradingView's Symbol Overview widget for the coin chart.
+// Embeds TradingView's Advanced Chart widget (full charting library, free).
 //
-// Critical setup notes (lessons learned):
-//   - When autosize=true, the WIDGET's inner div needs a CONCRETE height in
-//     pixels — calc(100% - 32px) doesn't work because parents may have no
-//     defined height. Iframe collapses to 0px otherwise.
-//   - Total height must accommodate: top header (~70px) + price row (~40px)
-//     + tabs row (~36px) + chart area (300px+ to look right) + copyright
-//     (~24px). Minimum sensible total is ~500px.
-//   - The script element must use `appendChild(createTextNode(...))` for
-//     its config — innerHTML doesn't always work for src-loaded scripts.
-//   - The wrapper div MUST have class="tradingview-widget-container" and
-//     contain a div with class="tradingview-widget-container__widget".
-//     Don't deviate from this structure.
+// Why this widget instead of Symbol Overview:
+//   - Advanced Chart's date ranges plot a ROLLING window (1D = last 24h with
+//     now at the right edge), fixing the "1D shows half-empty chart" issue
+//     the Symbol Overview widget has.
+//   - Built-in chart style toggle in top toolbar (candles, bars, line, area,
+//     Heikin Ashi, etc.) — no custom button needed.
+//   - More information: volume, indicators, drawing tools.
+//
+// Style codes (set via `style` config):
+//   "0" = Bars
+//   "1" = Candles (DEFAULT here, what most traders expect)
+//   "2" = Line
+//   "3" = Area
+//   "8" = Heikin Ashi
+//   "9" = Hollow Candles
+// Users can switch via the bar-style icon in the top toolbar.
+//
+// Container height MUST be set in pixels (autosize fills parent).
 
 import { useEffect, useRef } from 'react'
 
-const CHART_HEIGHT = 500     // total height in pixels
-const WIDGET_HEIGHT = 472    // inner widget area (CHART_HEIGHT - copyright link)
+const CHART_HEIGHT = 540   // total height in pixels
 
-// Curated TradingView symbol mapping. Format: lowercase coin symbol → TV symbol.
-// For coins NOT in this map, we fall back to BINANCE:{SYMBOL}USDT.
+// Curated TradingView symbol mapping. lowercase coin symbol → TV symbol.
+// For coins NOT in this map, fall back to BINANCE:{SYMBOL}USDT.
 const TV_SYMBOL_OVERRIDES = {
   btc: 'BINANCE:BTCUSDT',
   eth: 'BINANCE:ETHUSDT',
@@ -98,64 +103,50 @@ export default function TradingViewChart({ symbol, coinName }) {
     const container = containerRef.current
     container.innerHTML = ''
 
-    // Build EXACT structure TradingView's embed script expects:
-    //   <div class="tradingview-widget-container">  ← outer (containerRef)
-    //     <div class="tradingview-widget-container__widget" style="height: 472px"></div>
-    //     <div class="tradingview-widget-copyright">...</div>
-    //     <script src="..." async>{config-as-textContent}</script>
-    //   </div>
-
-    // 1. Inner widget div with CONCRETE pixel height (this is critical)
+    // Inner widget div with concrete pixel height
     const widgetDiv = document.createElement('div')
     widgetDiv.className = 'tradingview-widget-container__widget'
-    widgetDiv.style.height = `${WIDGET_HEIGHT}px`
+    widgetDiv.style.height = `${CHART_HEIGHT - 28}px`
     widgetDiv.style.width = '100%'
     container.appendChild(widgetDiv)
 
-    // 2. Copyright link (TradingView requires this for free widgets)
+    // Copyright link (TradingView terms require attribution for free widgets)
     const copyrightDiv = document.createElement('div')
     copyrightDiv.className = 'tradingview-widget-copyright'
     copyrightDiv.style.fontSize = '13px'
-    copyrightDiv.style.lineHeight = '32px'
+    copyrightDiv.style.lineHeight = '28px'
     copyrightDiv.style.textAlign = 'center'
     copyrightDiv.innerHTML = `<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank" style="color: #2962FF; text-decoration: none;">Track all markets on TradingView</a>`
     container.appendChild(copyrightDiv)
 
-    // 3. Build config — note: do NOT include width/height when autosize=true
-    //    (they conflict). Just give it autosize and the parent's pixel height.
+    // Advanced Chart config
     const config = {
-      symbols: [
-        [coinName || symbol || 'Symbol', tvSymbol + '|1D'],
-      ],
-      chartOnly: false,
-      width: '100%',
-      height: WIDGET_HEIGHT,
+      autosize: true,
+      symbol: tvSymbol,
+      interval: 'D',                  // default to daily candles
+      timezone: 'Etc/UTC',
+      theme: 'dark',
+      style: '1',                     // 1 = Candles (default)
       locale: 'en',
-      colorTheme: 'dark',
-      autosize: false,         // explicit pixel height instead — more reliable
-      showVolume: false,
-      showMA: false,
-      hideDateRanges: false,
-      hideMarketStatus: false,
-      hideSymbolLogo: false,
-      scalePosition: 'right',
-      scaleMode: 'Normal',
-      fontFamily: '-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif',
-      fontSize: '10',
-      noTimeScale: false,
-      valuesTracking: '1',
-      changeMode: 'price-and-percent',
-      chartType: 'area',
-      headerFontSize: 'medium',
-      lineWidth: 2,
-      lineType: 0,
-      dateRanges: ['1d|1', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
+      withdateranges: true,           // shows 1D 5D 1M 3M 6M YTD 1Y 5Y All buttons
+      range: '12M',                   // default visible range: 12 months
+      hide_side_toolbar: true,        // cleaner look — hide left drawing toolbar
+      hide_top_toolbar: false,        // CRITICAL: keep top toolbar so user can switch chart style
+      hide_legend: false,
+      allow_symbol_change: false,     // lock to this coin's symbol
+      save_image: false,
+      details: false,
+      hotlist: false,
+      calendar: false,
+      backgroundColor: 'rgba(0, 0, 0, 0)',
+      gridColor: 'rgba(255, 255, 255, 0.04)',
+      support_host: 'https://www.tradingview.com',
     }
 
-    // 4. Script — use textContent (via createTextNode) NOT innerHTML
+    // Script with config as text content (not innerHTML — important!)
     const script = document.createElement('script')
     script.type = 'text/javascript'
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js'
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
     script.async = true
     script.appendChild(document.createTextNode(JSON.stringify(config)))
     container.appendChild(script)
@@ -165,7 +156,6 @@ export default function TradingViewChart({ symbol, coinName }) {
     }
   }, [tvSymbol, coinName, symbol])
 
-  // Outer container with concrete pixel height
   return (
     <div
       className="tradingview-widget-container"
