@@ -33,7 +33,7 @@ const SITE_URL = 'https://www.gmcrypto.news'
 
 const TradingViewChart = dynamic(() => import('../../components/TradingViewChart'), {
   ssr: false,
-  loading: () => <div className="coin-chart-loading" style={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
+  loading: () => <div className="coin-chart-loading" style={{ height: 620, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
 })
 
 function timeAgo(dateStr) {
