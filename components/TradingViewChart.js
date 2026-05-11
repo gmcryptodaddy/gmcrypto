@@ -2,31 +2,21 @@
 //
 // Embeds TradingView's Advanced Chart widget (full charting library, free).
 //
-// Why this widget instead of Symbol Overview:
-//   - Advanced Chart's date ranges plot a ROLLING window (1D = last 24h with
-//     now at the right edge), fixing the "1D shows half-empty chart" issue
-//     the Symbol Overview widget has.
-//   - Built-in chart style toggle in top toolbar (candles, bars, line, area,
-//     Heikin Ashi, etc.) — no custom button needed.
-//   - More information: volume, indicators, drawing tools.
+// HEIGHT NOTE: the Advanced Chart widget has a top toolbar (~40px) and bottom
+// date range bar (~36px) that eat into the container. The actual chart canvas
+// gets (container height - 76px). To get a ~525px chart area like trading
+// platforms typically use, the container needs ~600px total.
 //
 // Style codes (set via `style` config):
-//   "0" = Bars
-//   "1" = Candles (DEFAULT here, what most traders expect)
-//   "2" = Line
-//   "3" = Area
-//   "8" = Heikin Ashi
-//   "9" = Hollow Candles
+//   "0" = Bars, "1" = Candles (default), "2" = Line, "3" = Area
+//   "8" = Heikin Ashi, "9" = Hollow Candles
 // Users can switch via the bar-style icon in the top toolbar.
-//
-// Container height MUST be set in pixels (autosize fills parent).
 
 import { useEffect, useRef } from 'react'
 
-const CHART_HEIGHT = 540   // total height in pixels
+const CHART_HEIGHT = 620   // total container height in pixels
+const COPYRIGHT_HEIGHT = 28
 
-// Curated TradingView symbol mapping. lowercase coin symbol → TV symbol.
-// For coins NOT in this map, fall back to BINANCE:{SYMBOL}USDT.
 const TV_SYMBOL_OVERRIDES = {
   btc: 'BINANCE:BTCUSDT',
   eth: 'BINANCE:ETHUSDT',
@@ -103,37 +93,42 @@ export default function TradingViewChart({ symbol, coinName }) {
     const container = containerRef.current
     container.innerHTML = ''
 
-    // Inner widget div with concrete pixel height
+    const widgetHeight = CHART_HEIGHT - COPYRIGHT_HEIGHT
+
+    // Inner widget div — concrete pixel height
     const widgetDiv = document.createElement('div')
     widgetDiv.className = 'tradingview-widget-container__widget'
-    widgetDiv.style.height = `${CHART_HEIGHT - 28}px`
+    widgetDiv.style.height = `${widgetHeight}px`
     widgetDiv.style.width = '100%'
     container.appendChild(widgetDiv)
 
-    // Copyright link (TradingView terms require attribution for free widgets)
+    // Copyright link (TradingView terms require attribution)
     const copyrightDiv = document.createElement('div')
     copyrightDiv.className = 'tradingview-widget-copyright'
     copyrightDiv.style.fontSize = '13px'
-    copyrightDiv.style.lineHeight = '28px'
+    copyrightDiv.style.lineHeight = `${COPYRIGHT_HEIGHT}px`
     copyrightDiv.style.textAlign = 'center'
     copyrightDiv.innerHTML = `<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank" style="color: #2962FF; text-decoration: none;">Track all markets on TradingView</a>`
     container.appendChild(copyrightDiv)
 
-    // Advanced Chart config
+    // Advanced Chart config — use explicit pixel height instead of autosize
+    // to avoid the widget rendering smaller than expected
     const config = {
-      autosize: true,
+      width: '100%',
+      height: widgetHeight,
+      autosize: false,
       symbol: tvSymbol,
-      interval: 'D',                  // default to daily candles
+      interval: 'D',
       timezone: 'Etc/UTC',
       theme: 'dark',
-      style: '1',                     // 1 = Candles (default)
+      style: '1',                     // 1 = Candles
       locale: 'en',
-      withdateranges: true,           // shows 1D 5D 1M 3M 6M YTD 1Y 5Y All buttons
-      range: '12M',                   // default visible range: 12 months
-      hide_side_toolbar: true,        // cleaner look — hide left drawing toolbar
-      hide_top_toolbar: false,        // CRITICAL: keep top toolbar so user can switch chart style
+      withdateranges: true,
+      range: '12M',
+      hide_side_toolbar: true,
+      hide_top_toolbar: false,
       hide_legend: false,
-      allow_symbol_change: false,     // lock to this coin's symbol
+      allow_symbol_change: false,
       save_image: false,
       details: false,
       hotlist: false,
@@ -143,7 +138,6 @@ export default function TradingViewChart({ symbol, coinName }) {
       support_host: 'https://www.tradingview.com',
     }
 
-    // Script with config as text content (not innerHTML — important!)
     const script = document.createElement('script')
     script.type = 'text/javascript'
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
