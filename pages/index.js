@@ -450,7 +450,7 @@ export async function getStaticProps() {
         posts: posts || [],
         telegramPosts: telegramPosts || [],
       },
-      revalidate: 300,
+      revalidate: 30,
     }
   } catch (error) {
     console.error('Homepage data error:', error)
