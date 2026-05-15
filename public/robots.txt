@@ -11,3 +11,6 @@ Disallow: /api/
 # Sitemap locations
 Sitemap: https://www.gmcrypto.news/sitemap.xml
 Sitemap: https://www.gmcrypto.news/sitemap-news.xml
+
+# RSS feed (auto-discoverable via <link rel="alternate"> in <head>)
+# https://www.gmcrypto.news/feed.xml
