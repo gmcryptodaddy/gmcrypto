@@ -24,6 +24,9 @@ export default function Footer() {
           <Link href="/?category=News">News</Link>
           <Link href="/learn">Learn</Link>
           <Link href="/markets">Markets</Link>
+          {/* Plain <a> (not next/link) because /feed.xml is a non-Next route
+              served as XML — Link would try client-side navigation. */}
+          <a href="/feed.xml">RSS Feed</a>
         </div>
 
         <div className="footer-col">
