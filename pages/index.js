@@ -10,7 +10,7 @@ import NewsFeed from '../components/NewsFeed'
 import AnalysisEmbed from '../components/AnalysisEmbed'
 import { WebsiteSchema } from '../components/StructuredData'
 import { client, urlFor } from '../lib/sanity'
-import { allPostsQuery } from '../lib/queries'
+import { allPostsQuery, mostReadQuery } from '../lib/queries'
 import { generateHashtags } from '../lib/hashtags'
 import { getTelegramFeed } from '../lib/telegram'
 
@@ -39,8 +39,9 @@ const FILTERS = [
 
 const POSTS_PER_PAGE = 10
 
-export default function Home({ posts, telegramPosts }) {
+export default function Home({ posts, telegramPosts, mostReadPosts }) {
   const allPosts = posts || []
+  const mostRead = mostReadPosts || []
   const router = useRouter()
 
   const [activeFilter, setActiveFilter] = useState('All')
@@ -98,7 +99,9 @@ export default function Home({ posts, telegramPosts }) {
 
   const visiblePosts = filteredPosts.slice(0, visibleCount)
   const hasMore = visibleCount < filteredPosts.length
-  const latestPosts = allPosts.slice(0, 15)
+  // Sidebar left rail is split: Latest News (top) + Most Read (bottom).
+  // Each gets ~5-6 items so total visible count stays similar to before.
+  const latestPosts = allPosts.slice(0, 6)
 
   const scrollFilters = (dir) => {
     if (!scrollRef.current) return
@@ -160,27 +163,58 @@ export default function Home({ posts, telegramPosts }) {
 
       <div className="home-layout">
         <aside className="latest-feed">
-          <div className="feed-header">
-            <span className="feed-dot" />
-            <span className="feed-title">Latest news</span>
-          </div>
-          <div className="feed-list">
-            {latestPosts.length > 0 ? latestPosts.map(post => (
-              <Link key={post._id} href={`/post/${post.slug.current}`} className="feed-item">
-                <div className="feed-item-meta">
-                  <div className="feed-item-tags">
-                    {post.category && <span className="feed-category">{post.category}</span>}
+          <div className="feed-section">
+            <div className="feed-header">
+              <span className="feed-dot" />
+              <span className="feed-title">Latest news</span>
+            </div>
+            <div className="feed-list">
+              {latestPosts.length > 0 ? latestPosts.map(post => (
+                <Link key={post._id} href={`/post/${post.slug.current}`} className="feed-item">
+                  <div className="feed-item-meta">
+                    <div className="feed-item-tags">
+                      {post.category && <span className="feed-category">{post.category}</span>}
+                    </div>
+                    <span className="feed-time">{timeAgo(post.publishedAt)}</span>
                   </div>
-                  <span className="feed-time">{timeAgo(post.publishedAt)}</span>
+                  <h3 className="feed-item-title">{post.title}</h3>
+                </Link>
+              )) : (
+                <div className="feed-empty">
+                  Publish your first article in Sanity Studio — it'll appear here.
                 </div>
-                <h3 className="feed-item-title">{post.title}</h3>
-              </Link>
-            )) : (
-              <div className="feed-empty">
-                Publish your first article in Sanity Studio — it'll appear here.
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* Most Read — compact ranked list, last 7 days, featured float to top */}
+          {mostRead.length > 0 && (
+            <div className="feed-section most-read-section">
+              <div className="feed-header">
+                <span className="feed-dot most-read-dot" />
+                <span className="feed-title">Most read</span>
+              </div>
+              <ol className="most-read-list">
+                {mostRead.map((post, idx) => (
+                  <li key={post._id} className="most-read-item-wrap">
+                    <Link href={`/post/${post.slug.current}`} className="most-read-item">
+                      <span className="most-read-rank">{idx + 1}</span>
+                      {post.mainImage ? (
+                        <img
+                          src={urlFor(post.mainImage).width(96).height(96).url()}
+                          alt={post.title}
+                          className="most-read-thumb"
+                        />
+                      ) : (
+                        <div className="most-read-thumb most-read-thumb-placeholder" />
+                      )}
+                      <h4 className="most-read-title">{post.title}</h4>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </aside>
 
         <main className="center-col">
@@ -441,21 +475,26 @@ export default function Home({ posts, telegramPosts }) {
 
 export async function getStaticProps() {
   try {
-    const [posts, telegramPosts] = await Promise.all([
+    // 7-day window for the Most Read widget (Strategy 2: hybrid hot/recent)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const [posts, telegramPosts, mostReadPosts] = await Promise.all([
       client.fetch(allPostsQuery),
       getTelegramFeed(),
+      client.fetch(mostReadQuery, { sevenDaysAgo }),
     ])
     return {
       props: {
         posts: posts || [],
         telegramPosts: telegramPosts || [],
+        mostReadPosts: mostReadPosts || [],
       },
       revalidate: 30,
     }
   } catch (error) {
     console.error('Homepage data error:', error)
     return {
-      props: { posts: [], telegramPosts: [] },
+      props: { posts: [], telegramPosts: [], mostReadPosts: [] },
       revalidate: 60,
     }
   }
