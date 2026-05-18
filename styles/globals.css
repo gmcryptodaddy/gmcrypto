@@ -4116,3 +4116,413 @@ body.light .ticker-change.down { color: #f44336; }
   flex: 1;
   min-width: 0;
 }
+/* ============================================================
+   Article Search — navbar search icon, expanding input, results dropdown
+   Append to bottom of styles/globals.css
+   ============================================================ */
+
+/* Search wrapper sits inside .nav-right.
+   When closed: shows just the icon button.
+   When open: expands to a 320px input + dropdown below. */
+.nav-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Icon-only search button (default state) */
+.nav-search-toggle {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-search-toggle:hover {
+  background: var(--bg2);
+  color: var(--accent);
+}
+
+/* Expanded input row */
+.nav-search-form {
+  display: flex;
+  align-items: center;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  height: 36px;
+  width: 320px;
+  padding: 0 8px 0 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.nav-search-form:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.15);
+}
+.nav-search-icon-inside {
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.nav-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 0 8px;
+  min-width: 0;
+}
+.nav-search-input::placeholder {
+  color: var(--text3);
+}
+.nav-search-close {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-search-close:hover {
+  color: var(--text);
+  background: var(--bg3);
+}
+
+/* Results dropdown — anchored below the input, aligned to right edge so it
+   doesn't overflow the viewport on narrower screens. */
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  /* Subtle entrance — feels less abrupt than a hard pop-in */
+  animation: search-dropdown-in 0.12s ease-out;
+}
+@keyframes search-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Empty / loading / no-results state */
+.search-hint {
+  padding: 18px 16px;
+  color: var(--text2);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Results list */
+.search-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+.search-result-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.12s;
+  align-items: flex-start;
+}
+.search-result-item:hover,
+.search-result-active {
+  background: var(--bg2);
+}
+.search-result-img {
+  width: 72px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--bg3);
+}
+.search-result-img-placeholder {
+  display: block;
+}
+.search-result-body {
+  flex: 1;
+  min-width: 0; /* lets long text truncate inside flex */
+}
+.search-result-cat {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.search-result-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+  /* Clamp to 2 lines so long titles don't blow up the row height */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.search-result-meta {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.4;
+  /* Clamp excerpt to 1 line — keeps results scannable */
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.search-result-dot {
+  margin: 0 6px;
+  color: var(--text3);
+}
+.search-result-excerpt {
+  color: var(--text2);
+}
+
+/* ─── Mobile: hide desktop search, show search inside slide-out menu ──── */
+@media (max-width: 900px) {
+  .nav-search-wrap {
+    display: none;
+  }
+}
+
+.mobile-search-section {
+  padding: 0 20px 16px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.mobile-search-form {
+  display: flex;
+  align-items: center;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  height: 44px;
+  padding: 0 12px;
+}
+.mobile-search-form:focus-within {
+  border-color: var(--accent);
+}
+.mobile-search-input {
+  font-size: 16px; /* 16px prevents iOS Safari zoom-on-focus */
+  height: 100%;
+}
+.mobile-search-results {
+  margin-top: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.mobile-search-results .search-result-img {
+  width: 64px;
+  height: 44px;
+}
+
+
+/* ============================================================
+   Most Read widget — sidebar left rail, compact ranked list
+   Lives below Latest News in the same .latest-feed aside
+   ============================================================ */
+
+/* When the left rail has two stacked sections, give them breathing room */
+.feed-section + .feed-section {
+  margin-top: 32px;
+}
+
+/* Distinguish the Most Read header dot — orange would clash with the
+   pulsing Latest News dot above. Use a static, non-pulsing fill. */
+.most-read-dot {
+  background: var(--text2);
+  animation: none;
+}
+
+.most-read-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.most-read-item-wrap {
+  border-bottom: 1px solid var(--border);
+}
+.most-read-item-wrap:last-child {
+  border-bottom: none;
+}
+
+.most-read-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  text-decoration: none;
+  color: var(--text);
+  transition: opacity 0.2s;
+}
+.most-read-item:hover {
+  opacity: 0.7;
+}
+
+.most-read-rank {
+  flex-shrink: 0;
+  width: 22px;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  padding-top: 2px;
+}
+
+.most-read-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--bg3);
+}
+.most-read-thumb-placeholder {
+  display: block;
+}
+
+.most-read-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  /* Clamp to 3 lines — keeps row heights consistent */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* ============================================================
+   Article Reactions — emoji reaction bar at the end of articles
+   ============================================================ */
+
+.reactions {
+  margin-top: 40px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg2);
+}
+
+.reactions-prompt {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.reactions-total {
+  color: var(--text3);
+  font-weight: 400;
+}
+
+.reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reaction-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.15s, background 0.15s;
+  font-family: var(--font-mono);
+}
+.reaction-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.reaction-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.reaction-btn:disabled {
+  cursor: default;
+}
+/* The reaction the user has already given — highlighted, stays readable */
+.reaction-btn-active {
+  border-color: var(--accent);
+  background: rgba(255, 107, 0, 0.08);
+}
+/* Disabled but NOT the user's own pick (i.e. another reaction is mid-submit) */
+.reaction-btn:disabled:not(.reaction-btn-active) {
+  opacity: 0.55;
+}
+
+.reaction-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+.reaction-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 12px;
+  text-align: left;
+}
+.reaction-btn-active .reaction-count {
+  color: var(--accent);
+}
+
+.reactions-error {
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--red);
+}
+
+@media (max-width: 600px) {
+  .reactions {
+    padding: 18px;
+  }
+  .reaction-btn {
+    padding: 9px 13px;
+  }
+}
