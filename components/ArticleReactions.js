@@ -146,14 +146,18 @@ export default function ArticleReactions({ postId }) {
               className={`reaction-btn ${hasReacted ? 'reaction-btn-active' : ''}`}
               onClick={() => handleReact(r.key)}
               disabled={hasReacted || !!pending}
-              title={hasReacted ? `You reacted: ${r.label}` : r.label}
               aria-label={`React with ${r.label}`}
               aria-pressed={hasReacted}
             >
-              <span className="reaction-emoji">{r.emoji}</span>
-              <span className="reaction-count">
-                {counts === null ? '·' : (isPending ? '…' : count)}
+              <span className="reaction-bubble">
+                <span className="reaction-emoji">{r.emoji}</span>
+                {count > 0 && (
+                  <span className="reaction-count-badge">
+                    {isPending ? '…' : count}
+                  </span>
+                )}
               </span>
+              <span className="reaction-label">{r.label}</span>
             </button>
           )
         })}
