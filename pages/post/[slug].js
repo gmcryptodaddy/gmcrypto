@@ -6,6 +6,7 @@ import Ticker from '../../components/Ticker'
 import Sidebar from '../../components/Sidebar'
 import Footer from '../../components/Footer'
 import ShareButton from '../../components/ShareButton'
+import ArticleReactions from '../../components/ArticleReactions'
 import SocialIcons from '../../components/SocialIcons'
 import { NewsArticleSchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
@@ -270,6 +271,9 @@ export default function PostPage({ post, relatedPosts }) {
           <div style={{ marginTop: 48, padding: '20px', background: 'var(--bg2)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text3)' }}>
             ⚠️ <strong style={{ color: 'var(--text2)' }}>Disclaimer:</strong> This article is for informational purposes only and does not constitute financial advice. Always do your own research before making investment decisions.
           </div>
+
+          {/* Emoji reactions — engagement signal, shown once the reader reaches the end */}
+          <ArticleReactions postId={post._id} />
 
           {hasRelated && (
             <section className="related-posts">
