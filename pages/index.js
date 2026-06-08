@@ -204,6 +204,10 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                           src={urlFor(post.mainImage).width(96).height(96).url()}
                           alt={post.title}
                           className="most-read-thumb"
+                          width={48}
+                          height={48}
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="most-read-thumb most-read-thumb-placeholder" />
@@ -299,6 +303,14 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                               src={urlFor(post.mainImage).width(900).height(500).url()}
                               alt={post.title}
                               className="article-item-img"
+                              width={900}
+                              height={500}
+                              /* The very first article above the fold is the
+                                 LCP candidate on the homepage. Eager + high
+                                 priority for it, lazy for the rest. */
+                              loading={idx === 0 ? 'eager' : 'lazy'}
+                              fetchpriority={idx === 0 ? 'high' : 'auto'}
+                              decoding="async"
                             />
                           ) : (
                             <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
@@ -312,6 +324,10 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                                 src={urlFor(post.author.image).width(60).height(60).url()}
                                 alt={post.author.name}
                                 className="article-item-avatar"
+                                width={30}
+                                height={30}
+                                loading="lazy"
+                                decoding="async"
                               />
                             )}
                             {post.author?.name && (
@@ -364,6 +380,13 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                             src={urlFor(heroPost.mainImage).width(800).height(450).url()}
                             alt={heroPost.title}
                             className="mobile-hero-img"
+                            width={800}
+                            height={450}
+                            /* Mobile LCP element — same priority treatment as
+                               the first desktop article. */
+                            loading="eager"
+                            fetchpriority="high"
+                            decoding="async"
                           />
                         ) : (
                           <div className="mobile-hero-img img-placeholder">[ no image ]</div>
@@ -407,6 +430,10 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                             src={urlFor(post.mainImage).width(240).height(240).url()}
                             alt={post.title}
                             className="mobile-article-thumb"
+                            width={240}
+                            height={240}
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="mobile-article-thumb img-placeholder">—</div>
