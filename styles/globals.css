@@ -4049,3 +4049,231 @@ body.light .ticker-change.down { color: #f44336; }
     font-size: 26px;
   }
 }
+/* ============================================================
+   Articles Archive — /articles
+   Dense list view: thumbnail + title + excerpt + meta per row.
+   Append to bottom of styles/globals.css
+   ============================================================ */
+
+.articles-archive {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.articles-archive-header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.articles-archive-title {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0 0 8px 0;
+  color: var(--text);
+}
+.articles-archive-subtitle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text2);
+  margin: 0;
+}
+.articles-archive-clear {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+.articles-archive-clear:hover {
+  opacity: 0.7;
+}
+
+/* List of articles — semantic <ol> so screen readers + crawlers understand
+   the ranking (descending by date). Reset list styles. */
+.articles-archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.articles-archive-row {
+  border-bottom: 1px solid var(--border);
+}
+.articles-archive-row:last-child {
+  border-bottom: none;
+}
+
+.articles-archive-link {
+  display: flex;
+  gap: 20px;
+  padding: 20px 0;
+  text-decoration: none;
+  color: var(--text);
+  transition: opacity 0.15s;
+}
+.articles-archive-link:hover {
+  opacity: 0.75;
+}
+
+.articles-archive-thumb {
+  width: 140px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: var(--bg3);
+}
+.articles-archive-thumb-placeholder {
+  display: block;
+}
+
+.articles-archive-body {
+  flex: 1;
+  min-width: 0;
+}
+.articles-archive-cat {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.articles-archive-headline {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 6px 0;
+  color: var(--text);
+  /* Clamp to 2 lines so rows stay roughly even */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.articles-archive-excerpt {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text2);
+  margin: 0 0 8px 0;
+  /* One-line teaser keeps the list scannable */
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.articles-archive-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text3);
+}
+.articles-archive-dot {
+  margin: 0 6px;
+}
+
+.articles-archive-empty {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+/* Pagination: Prev / page info / Next, plus a row of numbered links below */
+.articles-archive-pagination {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.articles-archive-page-btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--bg);
+  transition: background 0.15s, border-color 0.15s;
+}
+.articles-archive-page-btn:hover {
+  background: var(--bg2);
+  border-color: var(--accent);
+}
+.articles-archive-page-btn-disabled {
+  color: var(--text3);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.articles-archive-page-info {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text2);
+}
+
+/* Numbered pages — wraps onto multiple lines for sites with many pages */
+.articles-archive-page-list {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.articles-archive-page-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.articles-archive-page-num:hover {
+  background: var(--bg2);
+  color: var(--text);
+}
+.articles-archive-page-num-active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.articles-archive-page-num-active:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Mobile — stack thumb on top, tighten spacing */
+@media (max-width: 640px) {
+  .articles-archive {
+    padding: 32px 16px 64px;
+  }
+  .articles-archive-title {
+    font-size: 30px;
+  }
+  .articles-archive-link {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .articles-archive-thumb {
+    width: 100%;
+    height: 180px;
+  }
+  .articles-archive-headline {
+    font-size: 18px;
+  }
+  .articles-archive-pagination {
+    flex-direction: column;
+  }
+}
