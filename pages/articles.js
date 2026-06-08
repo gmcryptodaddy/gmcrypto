@@ -97,7 +97,7 @@ export default function ArticlesPage({ posts, total, page, totalPages, category 
           <div className="articles-archive-empty">No articles to show.</div>
         ) : (
           <ol className="articles-archive-list">
-            {posts.map(post => (
+            {posts.map((post, idx) => (
               <li key={post._id} className="articles-archive-row">
                 <Link href={`/post/${post.slug.current}`} className="articles-archive-link">
                   {post.mainImage ? (
@@ -105,6 +105,12 @@ export default function ArticlesPage({ posts, total, page, totalPages, category 
                       src={urlFor(post.mainImage).width(160).height(120).url()}
                       alt={post.title}
                       className="articles-archive-thumb"
+                      width={140}
+                      height={100}
+                      /* First few thumbs are above the fold; load eagerly.
+                         Rest get lazy-loaded so the page renders fast. */
+                      loading={idx < 3 ? 'eager' : 'lazy'}
+                      decoding="async"
                     />
                   ) : (
                     <div className="articles-archive-thumb articles-archive-thumb-placeholder" />
