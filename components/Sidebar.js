@@ -74,6 +74,10 @@ export default function Sidebar() {
                         src={coin.image}
                         alt={coin.name}
                         className="market-coin-img"
+                        width={24}
+                        height={24}
+                        loading="lazy"
+                        decoding="async"
                       />
                     )}
                     <div>
