@@ -553,6 +553,7 @@ export default function Navbar() {
           <div className="mobile-menu-section">
             <div className="mobile-menu-heading">Browse</div>
             <Link href="/" className="mobile-menu-link" onClick={closeMobile}>All News</Link>
+            <Link href="/articles" className="mobile-menu-link" onClick={closeMobile}>All Articles</Link>
             <Link href="/markets" className="mobile-menu-link" onClick={closeMobile}>Markets</Link>
             <Link href="/learn" className="mobile-menu-link" onClick={closeMobile}>Learn</Link>
           </div>
