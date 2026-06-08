@@ -233,6 +233,9 @@ export default function PostPage({ post, relatedPosts }) {
                   className="author-avatar"
                   src={urlFor(post.author.image).width(72).height(72).url()}
                   alt={post.author.name}
+                  width={36}
+                  height={36}
+                  decoding="async"
                 />
               )}
               <div>
@@ -257,6 +260,13 @@ export default function PostPage({ post, relatedPosts }) {
               className="article-cover"
               src={urlFor(post.mainImage).width(800).height(480).url()}
               alt={post.title}
+              width={800}
+              height={480}
+              /* LCP element on article pages — load eagerly, top priority.
+                 fetchpriority="high" tells the browser to prioritize this fetch
+                 over other resources, measurably improving LCP on slow networks. */
+              fetchpriority="high"
+              decoding="async"
             />
           )}
 
@@ -302,6 +312,10 @@ export default function PostPage({ post, relatedPosts }) {
                         src={urlFor(rp.mainImage).width(400).height(220).url()}
                         alt={rp.title}
                         className="related-post-img"
+                        width={400}
+                        height={220}
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="related-post-img img-placeholder">[ no image ]</div>
