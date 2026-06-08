@@ -13,6 +13,7 @@ const SITE_URL = 'https://www.gmcrypto.news'
 
 const STATIC_PAGES = [
   { path: '',              priority: 1.0, changefreq: 'hourly'  },
+  { path: '/articles',     priority: 0.8, changefreq: 'daily'   },
   { path: '/markets',      priority: 0.9, changefreq: 'hourly'  },
   { path: '/markets/gainers',   priority: 0.7, changefreq: 'hourly' },
   { path: '/markets/losers',    priority: 0.7, changefreq: 'hourly' },
