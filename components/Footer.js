@@ -22,6 +22,7 @@ export default function Footer() {
         <div className="footer-col">
           <h4>Products</h4>
           <Link href="/?category=News">News</Link>
+          <Link href="/articles">All Articles</Link>
           <Link href="/learn">Learn</Link>
           <Link href="/markets">Markets</Link>
           {/* Plain <a> (not next/link) because /feed.xml is a non-Next route
