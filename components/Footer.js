@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="footer-main">
         <div className="footer-logo-col">
-          <img src="/logo-full.png" alt="[ gm crypto ]" className="footer-logo-img" />
+          <img src="/logo-full.png" alt="[ gm crypto ]" className="footer-logo-img" loading="lazy" decoding="async" />
           <p className="footer-tagline">
             Your daily dose of crypto news, market analysis, and blockchain insights.
           </p>
