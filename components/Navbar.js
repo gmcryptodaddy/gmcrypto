@@ -281,6 +281,10 @@ export default function Navbar() {
                   src={urlFor(post.mainImage).width(120).height(80).url()}
                   alt={post.title}
                   className="search-result-img"
+                  width={60}
+                  height={40}
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <div className="search-result-img search-result-img-placeholder" />
@@ -448,7 +452,7 @@ export default function Navbar() {
               {recentPosts.length > 0 ? recentPosts.map(post => (
                 <Link key={post._id} href={`/post/${post.slug.current}`} className="mega-post-card" onClick={closeDropdown}>
                   {post.mainImage ? (
-                    <img src={urlFor(post.mainImage).width(320).height(180).url()} alt={post.title} className="mega-post-img" />
+                    <img src={urlFor(post.mainImage).width(320).height(180).url()} alt={post.title} className="mega-post-img" width={160} height={90} loading="lazy" decoding="async" />
                   ) : (
                     <div className="mega-post-img mega-post-img-placeholder" />
                   )}
@@ -489,7 +493,7 @@ export default function Navbar() {
                 return (
                   <Link key={coin.id} href={`/markets/${coin.id}`} className="mega-coin-card" onClick={closeDropdown}>
                     <div className="mega-coin-top">
-                      {coin.image && <img src={coin.image} alt={coin.name} className="mega-coin-img" />}
+                      {coin.image && <img src={coin.image} alt={coin.name} className="mega-coin-img" width={24} height={24} loading="lazy" decoding="async" />}
                       <div className="mega-coin-names">
                         <span className="mega-coin-name">{coin.name}</span>
                         <span className="mega-coin-symbol">{coin.symbol?.toUpperCase()}</span>
