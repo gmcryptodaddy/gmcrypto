@@ -21,12 +21,21 @@ function escapeXml(str) {
 
 function generateNewsSitemap(posts) {
   const cutoff = Date.now() - TWO_DAYS_MS
-  const recent = posts.filter(p => {
-    if (!p.publishedAt || !p.slug?.current) return false
-    return new Date(p.publishedAt).getTime() >= cutoff
-  })
 
-  const entries = recent.map(post => {
+  const valid = (posts || []).filter(p => p.publishedAt && p.slug?.current)
+
+  const recent = valid.filter(p => new Date(p.publishedAt).getTime() >= cutoff)
+
+  // Fallback: a Google News sitemap with zero <url> entries is reported as a
+  // "Missing XML tag (url)" error in Search Console, and that error stays red
+  // until a populated version is re-read. To keep the sitemap structurally
+  // valid during quiet stretches (no posts in the last 48h), fall back to the
+  // single most recent article. Google won't feature a >48h-old article in
+  // News, so this doesn't game anything — it just prevents the empty-state
+  // error. `valid` is already ordered newest-first by the GROQ query.
+  const list = recent.length > 0 ? recent : valid.slice(0, 1)
+
+  const entries = list.map(post => {
     const lastmod = new Date(post.publishedAt).toISOString()
     return `
   <url>
