@@ -229,18 +229,52 @@ export default function PostPage({ post, relatedPosts }) {
 
             <div className="article-meta">
               {post.author?.image && (
-                <img
-                  className="author-avatar"
-                  src={urlFor(post.author.image).width(72).height(72).url()}
-                  alt={post.author.name}
-                  width={36}
-                  height={36}
-                  decoding="async"
-                />
+                post.author?.slug?.current ? (
+                  <Link href={`/author/${post.author.slug.current}`}>
+                    <img
+                      className="author-avatar"
+                      src={urlFor(post.author.image).width(72).height(72).url()}
+                      alt={post.author.name}
+                      width={36}
+                      height={36}
+                      decoding="async"
+                    />
+                  </Link>
+                ) : (
+                  <img
+                    className="author-avatar"
+                    src={urlFor(post.author.image).width(72).height(72).url()}
+                    alt={post.author.name}
+                    width={36}
+                    height={36}
+                    decoding="async"
+                  />
+                )
               )}
               <div>
                 {post.author?.name && (
-                  <div style={{ fontFamily: "var(--font-serif)", fontSize: 14 }}>{post.author.name}</div>
+                  <div className="article-byline">
+                    {post.author.slug?.current ? (
+                      <Link href={`/author/${post.author.slug.current}`} className="article-byline-name">
+                        {post.author.name}
+                      </Link>
+                    ) : (
+                      <span className="article-byline-name">{post.author.name}</span>
+                    )}
+                    {post.author.xHandle && (
+                      <>
+                        {' '}
+                        <a
+                          className="article-byline-handle"
+                          href={post.author.xUrl || `https://x.com/${post.author.xHandle}`}
+                          target="_blank"
+                          rel="me noopener noreferrer"
+                        >
+                          @{post.author.xHandle}
+                        </a>
+                      </>
+                    )}
+                  </div>
                 )}
                 <div className="post-meta">
                   {formatDate(post.publishedAt)}
