@@ -48,7 +48,7 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;')
 }
 
-function generateSiteMap(posts) {
+function generateSiteMap(posts, authorSlugs) {
   const today = new Date().toISOString().split('T')[0]
 
   const staticEntries = STATIC_PAGES.map(p => `
@@ -67,6 +67,17 @@ function generateSiteMap(posts) {
     <priority>0.7</priority>
   </url>`).join('')
 
+  const authorEntries = (authorSlugs || []).map(slug => {
+    if (!slug) return ''
+    return `
+  <url>
+    <loc>${SITE_URL}/author/${slug}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>`
+  }).join('')
+
   const articleEntries = posts.map(post => {
     const slug = post.slug?.current
     if (!slug) return ''
@@ -83,7 +94,7 @@ function generateSiteMap(posts) {
   }).join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticEntries}${coinEntries}${articleEntries}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticEntries}${coinEntries}${authorEntries}${articleEntries}
 </urlset>`
 }
 
@@ -91,17 +102,23 @@ function SiteMap() { return null }
 
 export async function getServerSideProps({ res }) {
   let posts = []
+  let authorSlugs = []
   try {
-    posts = await client.fetch(`
-      *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {
-        title, slug, publishedAt
-      }
-    `)
+    const [postsResult, authorsResult] = await Promise.all([
+      client.fetch(`
+        *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {
+          title, slug, publishedAt
+        }
+      `),
+      client.fetch(`*[_type == "author" && defined(slug.current)]{ "slug": slug.current }`),
+    ])
+    posts = postsResult || []
+    authorSlugs = (authorsResult || []).map(a => a.slug).filter(Boolean)
   } catch (err) {
     console.error('Sitemap fetch error:', err)
   }
 
-  const sitemap = generateSiteMap(posts || [])
+  const sitemap = generateSiteMap(posts || [], authorSlugs)
   res.setHeader('Content-Type', 'application/xml')
   res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=21600')
   res.write(sitemap)
