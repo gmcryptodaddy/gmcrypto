@@ -17,7 +17,7 @@ import Head from 'next/head'
 const SITE_URL = 'https://www.gmcrypto.news'
 const SITE_NAME = 'GM Crypto News'
 
-function JsonLd({ data }) {
+export function JsonLd({ data }) {
   return (
     <Head>
       <script
@@ -80,6 +80,13 @@ export function NewsArticleSchema({ post, imageUrl, wordCount, hashtags }) {
         '@type': 'Person',
         name: post.author.name,
         ...(post.author.bio ? { description: post.author.bio } : {}),
+        // Link the byline to the on-site author page…
+        ...(post.author.slug?.current
+          ? { url: `${SITE_URL}/author/${post.author.slug.current}` }
+          : {}),
+        // …and to their X profile, so Google can verify the (pseudonymous)
+        // author as a consistent, real online entity.
+        ...(post.author.xUrl ? { sameAs: [post.author.xUrl] } : {}),
       }
     : { '@type': 'Organization', name: SITE_NAME }
 
