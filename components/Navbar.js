@@ -140,7 +140,10 @@ export default function Navbar() {
           </div>
 
           <div className="nav-item-wrap">
-            <Link href="/future-news" className="nav-link-item">Future</Link>
+            <Link href="/future-news" className="nav-link-item nav-link-future">
+              Future
+              <span className="nav-future-dot" aria-hidden="true" />
+            </Link>
           </div>
 
           <div className="nav-item-wrap">
@@ -273,7 +276,10 @@ export default function Navbar() {
             <div className="mobile-menu-heading">Browse</div>
             <Link href="/" className="mobile-menu-link" onClick={closeMobile}>All News</Link>
             <Link href="/markets" className="mobile-menu-link" onClick={closeMobile}>Markets</Link>
-            <Link href="/future-news" className="mobile-menu-link" onClick={closeMobile}>Future News</Link>
+            <Link href="/future-news" className="mobile-menu-link mobile-menu-link-future" onClick={closeMobile}>
+              Future News
+              <span className="nav-future-dot mobile-future-dot" aria-hidden="true" />
+            </Link>
             <Link href="/learn" className="mobile-menu-link" onClick={closeMobile}>Learn</Link>
           </div>
 
