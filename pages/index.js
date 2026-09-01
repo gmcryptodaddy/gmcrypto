@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, Fragment } from 'react'
-import { useRouter } from 'next/router'
+import { useState, useRef, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
@@ -7,14 +6,12 @@ import Ticker from '../components/Ticker'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import NewsFeed from '../components/NewsFeed'
-import AnalysisEmbed from '../components/AnalysisEmbed'
-import { WebsiteSchema } from '../components/StructuredData'
+import FutureNewsFeed from '../components/FutureNewsFeed'
 import { client, urlFor } from '../lib/sanity'
-import { allPostsQuery, mostReadQuery } from '../lib/queries'
+import { allPostsQuery } from '../lib/queries'
 import { generateHashtags } from '../lib/hashtags'
 import { getTelegramFeed } from '../lib/telegram'
-
-const SITE_URL = 'https://www.gmcrypto.news'
+import { getPolymarketFeed } from '../lib/polymarket'
 
 function timeAgo(dateStr) {
   if (!dateStr) return 'recently'
@@ -39,27 +36,14 @@ const FILTERS = [
 
 const POSTS_PER_PAGE = 10
 
-export default function Home({ posts, telegramPosts, mostReadPosts }) {
+export default function Home({ posts, telegramPosts, futureNews }) {
   const allPosts = posts || []
-  const mostRead = mostReadPosts || []
-  const router = useRouter()
-
   const [activeFilter, setActiveFilter] = useState('All')
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
   const scrollRef = useRef(null)
 
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
-
-  useEffect(() => {
-    if (!router.isReady) return
-    const queryCat = router.query.category
-    if (typeof queryCat === 'string' && queryCat.trim()) {
-      setActiveFilter(queryCat)
-    } else {
-      setActiveFilter('All')
-    }
-  }, [router.isReady, router.query.category])
 
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
@@ -81,15 +65,6 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
     }
   }, [])
 
-  const updateFilter = (newFilter) => {
-    setActiveFilter(newFilter)
-    if (newFilter === 'All') {
-      router.push('/', undefined, { shallow: true, scroll: false })
-    } else {
-      router.push(`/?category=${encodeURIComponent(newFilter)}`, undefined, { shallow: true, scroll: false })
-    }
-  }
-
   const filteredPosts = activeFilter === 'All'
     ? allPosts
     : allPosts.filter(p =>
@@ -99,9 +74,7 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
 
   const visiblePosts = filteredPosts.slice(0, visibleCount)
   const hasMore = visibleCount < filteredPosts.length
-  // Sidebar left rail is split: Latest News (top) + Most Read (bottom).
-  // Each gets ~5-6 items so total visible count stays similar to before.
-  const latestPosts = allPosts.slice(0, 6)
+  const latestPosts = allPosts.slice(0, 15)
 
   const scrollFilters = (dir) => {
     if (!scrollRef.current) return
@@ -118,112 +91,66 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
   const heroPost = visiblePosts[0] || null
   const restPosts = visiblePosts.slice(1)
 
-  const isCategoryView = activeFilter !== 'All'
-  const pageTitle = isCategoryView
-    ? `${activeFilter} — GM Crypto News`
-    : 'GM Crypto News — Daily Crypto News, Markets & Analysis'
-  const pageDescription = isCategoryView
-    ? `Latest ${activeFilter} news, analysis, and updates on GM Crypto News. No hype. Just signal.`
-    : 'Daily crypto news, market analysis, and blockchain insights. Live prices for 1000+ coins, top movers, and analysis. No hype. Just signal.'
-
   return (
     <>
       <Head>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} />
+        <title>GM Crypto News</title>
+        <meta name="description" content="Your daily dose of crypto news, market analysis, and blockchain insights. No hype. Just signal." />
 
-        <link rel="canonical" href={SITE_URL} />
-
-        {isCategoryView && (
-          <meta name="robots" content="noindex, follow" />
-        )}
-
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDescription} />
-        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
+        <meta property="og:title" content="GM Crypto News" />
+        <meta property="og:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <meta property="og:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="GM Crypto News" />
-        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:url" content="https://www.gmcrypto.news" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GM Crypto News" />
-        <meta property="og:locale" content="en_US" />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={pageDescription} />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        <meta name="twitter:title" content="GM Crypto News" />
+        <meta name="twitter:description" content="Daily crypto news, market analysis, and blockchain insights. No hype. Just signal." />
+        <meta name="twitter:image" content="https://www.gmcrypto.news/og-image.png" />
         <meta name="twitter:site" content="@gm_cryptonews" />
       </Head>
-
-      {!isCategoryView && <WebsiteSchema />}
 
       <Ticker />
       <Navbar />
 
       <div className="home-layout">
+        {/* LEFT: Latest news */}
         <aside className="latest-feed">
-          <div className="feed-section">
-            <div className="feed-header">
-              <span className="feed-dot" />
-              <span className="feed-title">Latest news</span>
-            </div>
-            <div className="feed-list">
-              {latestPosts.length > 0 ? latestPosts.map(post => (
-                <Link key={post._id} href={`/post/${post.slug.current}`} className="feed-item">
-                  <div className="feed-item-meta">
-                    <div className="feed-item-tags">
-                      {post.category && <span className="feed-category">{post.category}</span>}
-                    </div>
-                    <span className="feed-time">{timeAgo(post.publishedAt)}</span>
-                  </div>
-                  <h3 className="feed-item-title">{post.title}</h3>
-                </Link>
-              )) : (
-                <div className="feed-empty">
-                  Publish your first article in Sanity Studio — it'll appear here.
-                </div>
-              )}
-            </div>
+          <div className="feed-header">
+            <span className="feed-dot" />
+            <span className="feed-title">Latest news</span>
           </div>
-
-          {/* Most Read — compact ranked list, last 7 days, featured float to top */}
-          {mostRead.length > 0 && (
-            <div className="feed-section most-read-section">
-              <div className="feed-header">
-                <span className="feed-dot most-read-dot" />
-                <span className="feed-title">Most read</span>
+          <div className="feed-list">
+            {latestPosts.length > 0 ? latestPosts.map(post => (
+              <Link key={post._id} href={`/post/${post.slug.current}`} className="feed-item">
+                <div className="feed-item-meta">
+                  <div className="feed-item-tags">
+                    {post.category && <span className="feed-category">{post.category}</span>}
+                  </div>
+                  <span className="feed-time">{timeAgo(post.publishedAt)}</span>
+                </div>
+                <h3 className="feed-item-title">{post.title}</h3>
+              </Link>
+            )) : (
+              <div className="feed-empty">
+                Publish your first article in Sanity Studio — it'll appear here.
               </div>
-              <ol className="most-read-list">
-                {mostRead.map((post, idx) => (
-                  <li key={post._id} className="most-read-item-wrap">
-                    <Link href={`/post/${post.slug.current}`} className="most-read-item">
-                      <span className="most-read-rank">{idx + 1}</span>
-                      {post.mainImage ? (
-                        <img
-                          src={urlFor(post.mainImage).width(96).height(96).url()}
-                          alt={post.title}
-                          className="most-read-thumb"
-                          width={48}
-                          height={48}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div className="most-read-thumb most-read-thumb-placeholder" />
-                      )}
-                      <h4 className="most-read-title">{post.title}</h4>
-                    </Link>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+            )}
+          </div>
         </aside>
 
+        {/* CENTER: Main feed */}
         <main className="center-col">
+          {/* Future News teaser (from Polymarket) */}
+          <FutureNewsFeed items={futureNews} />
+
+          {/* News Feed (from Telegram) */}
           <NewsFeed posts={telegramPosts} />
 
+          {/* Desktop filter pills */}
           <div className="filter-bar">
             <button
               className="filter-arrow"
@@ -240,20 +167,12 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                 {FILTERS.map(f => (
                   <button
                     key={f}
-                    onClick={() => updateFilter(f)}
+                    onClick={() => setActiveFilter(f)}
                     className={`filter-pill ${activeFilter === f ? 'filter-pill-active' : ''}`}
                   >
                     {f}
                   </button>
                 ))}
-                {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
-                  <button
-                    onClick={() => updateFilter(activeFilter)}
-                    className="filter-pill filter-pill-active"
-                  >
-                    {activeFilter}
-                  </button>
-                )}
               </div>
             </div>
             <button
@@ -268,20 +187,18 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
             </button>
           </div>
 
+          {/* Mobile dropdown filter */}
           <div className="filter-bar-mobile">
             <label className="filter-dropdown-label">Category</label>
             <div className="filter-dropdown-wrap">
               <select
                 className="filter-dropdown"
-                value={FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) ? activeFilter : 'All'}
-                onChange={(e) => updateFilter(e.target.value)}
+                value={activeFilter}
+                onChange={(e) => setActiveFilter(e.target.value)}
               >
                 {FILTERS.map(f => (
                   <option key={f} value={f}>{f}</option>
                 ))}
-                {activeFilter !== 'All' && !FILTERS.some(f => f.toLowerCase() === activeFilter.toLowerCase()) && (
-                  <option value={activeFilter}>{activeFilter}</option>
-                )}
               </select>
               <svg className="filter-dropdown-caret" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -291,84 +208,70 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
 
           {visiblePosts.length > 0 ? (
             <>
+              {/* DESKTOP article list */}
               <div className="article-list">
-                {visiblePosts.map((post, idx) => {
+                {visiblePosts.map(post => {
                   const hashtags = generateHashtags(post.title, post.category, 3)
                   return (
-                    <Fragment key={post._id}>
-                      <article className="article-item">
-                        <Link href={`/post/${post.slug.current}`}>
-                          {post.mainImage ? (
+                    <article key={post._id} className="article-item">
+                      <Link href={`/post/${post.slug.current}`}>
+                        {post.mainImage ? (
+                          <img
+                            src={urlFor(post.mainImage).width(900).height(500).url()}
+                            alt={post.title}
+                            className="article-item-img"
+                          />
+                        ) : (
+                          <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
+                        )}
+                      </Link>
+
+                      <div className="article-item-meta">
+                        <div className="article-item-author">
+                          {post.author?.image && (
                             <img
-                              src={urlFor(post.mainImage).width(900).height(500).url()}
-                              alt={post.title}
-                              className="article-item-img"
-                              width={900}
-                              height={500}
-                              /* The very first article above the fold is the
-                                 LCP candidate on the homepage. Eager + high
-                                 priority for it, lazy for the rest. */
-                              loading={idx === 0 ? 'eager' : 'lazy'}
-                              fetchpriority={idx === 0 ? 'high' : 'auto'}
-                              decoding="async"
+                              src={urlFor(post.author.image).width(60).height(60).url()}
+                              alt={post.author.name}
+                              className="article-item-avatar"
                             />
-                          ) : (
-                            <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
                           )}
-                        </Link>
-
-                        <div className="article-item-meta">
-                          <div className="article-item-author">
-                            {post.author?.image && (
-                              <img
-                                src={urlFor(post.author.image).width(60).height(60).url()}
-                                alt={post.author.name}
-                                className="article-item-avatar"
-                                width={30}
-                                height={30}
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            )}
-                            {post.author?.name && (
-                              <span className="article-item-author-name">{post.author.name}</span>
-                            )}
-                          </div>
-                          <div className="article-item-tags">
-                            {post.category && <span className="article-item-tag">{post.category}</span>}
-                          </div>
+                          {post.author?.name && (
+                            <span className="article-item-author-name">{post.author.name}</span>
+                          )}
                         </div>
-
-                        <Link href={`/post/${post.slug.current}`}>
-                          <h2 className="article-item-title">{post.title}</h2>
-                        </Link>
-
-                        {post.excerpt && (
-                          <p className="article-item-excerpt">{post.excerpt}</p>
-                        )}
-
-                        {hashtags.length > 0 && (
-                          <div className="article-item-hashtags">
-                            {hashtags.map(tag => (
-                              <span key={tag} className="article-hashtag">{tag}</span>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="article-item-footer">
-                          <Link href={`/post/${post.slug.current}`} className="article-read-btn">
-                            Read
-                          </Link>
-                          <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
+                        <div className="article-item-tags">
+                          {post.category && <span className="article-item-tag">{post.category}</span>}
                         </div>
-                      </article>
+                      </div>
 
-                      {(idx === 2 || (visiblePosts.length < 3 && idx === visiblePosts.length - 1)) && <AnalysisEmbed />}
-                    </Fragment>
+                      <Link href={`/post/${post.slug.current}`}>
+                        <h2 className="article-item-title">{post.title}</h2>
+                      </Link>
+
+                      {post.excerpt && (
+                        <p className="article-item-excerpt">{post.excerpt}</p>
+                      )}
+
+                      {hashtags.length > 0 && (
+                        <div className="article-item-hashtags">
+                          {hashtags.map(tag => (
+                            <span key={tag} className="article-hashtag">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="article-item-footer">
+                        <Link href={`/post/${post.slug.current}`} className="article-read-btn">
+                          Read
+                        </Link>
+                        <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
+                      </div>
+                    </article>
                   )
                 })}
               </div>
 
+              {/* MOBILE article list */}
               <div className="article-list-mobile">
                 {heroPost && (() => {
                   const heroHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
@@ -380,13 +283,6 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                             src={urlFor(heroPost.mainImage).width(800).height(450).url()}
                             alt={heroPost.title}
                             className="mobile-hero-img"
-                            width={800}
-                            height={450}
-                            /* Mobile LCP element — same priority treatment as
-                               the first desktop article. */
-                            loading="eager"
-                            fetchpriority="high"
-                            decoding="async"
                           />
                         ) : (
                           <div className="mobile-hero-img img-placeholder">[ no image ]</div>
@@ -430,10 +326,6 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
                             src={urlFor(post.mainImage).width(240).height(240).url()}
                             alt={post.title}
                             className="mobile-article-thumb"
-                            width={240}
-                            height={240}
-                            loading="lazy"
-                            decoding="async"
                           />
                         ) : (
                           <div className="mobile-article-thumb img-placeholder">—</div>
@@ -502,26 +394,23 @@ export default function Home({ posts, telegramPosts, mostReadPosts }) {
 
 export async function getStaticProps() {
   try {
-    // 7-day window for the Most Read widget (Strategy 2: hybrid hot/recent)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    const [posts, telegramPosts, mostReadPosts] = await Promise.all([
+    const [posts, telegramPosts, futureNews] = await Promise.all([
       client.fetch(allPostsQuery),
       getTelegramFeed(),
-      client.fetch(mostReadQuery, { sevenDaysAgo }),
+      getPolymarketFeed(),
     ])
     return {
       props: {
         posts: posts || [],
         telegramPosts: telegramPosts || [],
-        mostReadPosts: mostReadPosts || [],
+        futureNews: futureNews || [],
       },
-      revalidate: 30,
+      revalidate: 300,
     }
   } catch (error) {
     console.error('Homepage data error:', error)
     return {
-      props: { posts: [], telegramPosts: [], mostReadPosts: [] },
+      props: { posts: [], telegramPosts: [], futureNews: [] },
       revalidate: 60,
     }
   }
