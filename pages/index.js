@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Fragment } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
@@ -35,6 +35,8 @@ const FILTERS = [
 ]
 
 const POSTS_PER_PAGE = 10
+// Insert Future News widget after this many articles in the feed
+const FUTURE_NEWS_INSERT_AFTER = 2
 
 export default function Home({ posts, telegramPosts, futureNews }) {
   const allPosts = posts || []
@@ -91,6 +93,13 @@ export default function Home({ posts, telegramPosts, futureNews }) {
   const heroPost = visiblePosts[0] || null
   const restPosts = visiblePosts.slice(1)
 
+  // Determine whether to show Future News widget in this feed
+  const showFutureNews =
+    futureNews &&
+    futureNews.length > 0 &&
+    activeFilter === 'All' &&
+    visiblePosts.length >= FUTURE_NEWS_INSERT_AFTER
+
   return (
     <>
       <Head>
@@ -144,9 +153,6 @@ export default function Home({ posts, telegramPosts, futureNews }) {
 
         {/* CENTER: Main feed */}
         <main className="center-col">
-          {/* Future News teaser (from Polymarket) */}
-          <FutureNewsFeed items={futureNews} />
-
           {/* News Feed (from Telegram) */}
           <NewsFeed posts={telegramPosts} />
 
@@ -210,63 +216,70 @@ export default function Home({ posts, telegramPosts, futureNews }) {
             <>
               {/* DESKTOP article list */}
               <div className="article-list">
-                {visiblePosts.map(post => {
+                {visiblePosts.map((post, idx) => {
                   const hashtags = generateHashtags(post.title, post.category, 3)
                   return (
-                    <article key={post._id} className="article-item">
-                      <Link href={`/post/${post.slug.current}`}>
-                        {post.mainImage ? (
-                          <img
-                            src={urlFor(post.mainImage).width(900).height(500).url()}
-                            alt={post.title}
-                            className="article-item-img"
-                          />
-                        ) : (
-                          <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
-                        )}
-                      </Link>
-
-                      <div className="article-item-meta">
-                        <div className="article-item-author">
-                          {post.author?.image && (
+                    <Fragment key={post._id}>
+                      <article className="article-item">
+                        <Link href={`/post/${post.slug.current}`}>
+                          {post.mainImage ? (
                             <img
-                              src={urlFor(post.author.image).width(60).height(60).url()}
-                              alt={post.author.name}
-                              className="article-item-avatar"
+                              src={urlFor(post.mainImage).width(900).height(500).url()}
+                              alt={post.title}
+                              className="article-item-img"
                             />
+                          ) : (
+                            <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
                           )}
-                          {post.author?.name && (
-                            <span className="article-item-author-name">{post.author.name}</span>
-                          )}
-                        </div>
-                        <div className="article-item-tags">
-                          {post.category && <span className="article-item-tag">{post.category}</span>}
-                        </div>
-                      </div>
-
-                      <Link href={`/post/${post.slug.current}`}>
-                        <h2 className="article-item-title">{post.title}</h2>
-                      </Link>
-
-                      {post.excerpt && (
-                        <p className="article-item-excerpt">{post.excerpt}</p>
-                      )}
-
-                      {hashtags.length > 0 && (
-                        <div className="article-item-hashtags">
-                          {hashtags.map(tag => (
-                            <span key={tag} className="article-hashtag">{tag}</span>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="article-item-footer">
-                        <Link href={`/post/${post.slug.current}`} className="article-read-btn">
-                          Read
                         </Link>
-                        <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
-                      </div>
-                    </article>
+
+                        <div className="article-item-meta">
+                          <div className="article-item-author">
+                            {post.author?.image && (
+                              <img
+                                src={urlFor(post.author.image).width(60).height(60).url()}
+                                alt={post.author.name}
+                                className="article-item-avatar"
+                              />
+                            )}
+                            {post.author?.name && (
+                              <span className="article-item-author-name">{post.author.name}</span>
+                            )}
+                          </div>
+                          <div className="article-item-tags">
+                            {post.category && <span className="article-item-tag">{post.category}</span>}
+                          </div>
+                        </div>
+
+                        <Link href={`/post/${post.slug.current}`}>
+                          <h2 className="article-item-title">{post.title}</h2>
+                        </Link>
+
+                        {post.excerpt && (
+                          <p className="article-item-excerpt">{post.excerpt}</p>
+                        )}
+
+                        {hashtags.length > 0 && (
+                          <div className="article-item-hashtags">
+                            {hashtags.map(tag => (
+                              <span key={tag} className="article-hashtag">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="article-item-footer">
+                          <Link href={`/post/${post.slug.current}`} className="article-read-btn">
+                            Read
+                          </Link>
+                          <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
+                        </div>
+                      </article>
+
+                      {/* Insert Future News widget after the 2nd article */}
+                      {showFutureNews && idx === FUTURE_NEWS_INSERT_AFTER - 1 && (
+                        <FutureNewsFeed items={futureNews} />
+                      )}
+                    </Fragment>
                   )
                 })}
               </div>
@@ -315,31 +328,38 @@ export default function Home({ posts, telegramPosts, futureNews }) {
 
                 {restPosts.length > 0 && (
                   <div className="mobile-article-list">
-                    {restPosts.map(post => (
-                      <Link
-                        key={post._id}
-                        href={`/post/${post.slug.current}`}
-                        className="mobile-article-row"
-                      >
-                        {post.mainImage ? (
-                          <img
-                            src={urlFor(post.mainImage).width(240).height(240).url()}
-                            alt={post.title}
-                            className="mobile-article-thumb"
-                          />
-                        ) : (
-                          <div className="mobile-article-thumb img-placeholder">—</div>
-                        )}
-                        <div className="mobile-article-text">
-                          <div className="mobile-article-meta">
-                            {post.category && (
-                              <span className="mobile-article-cat">{post.category}</span>
-                            )}
+                    {restPosts.map((post, idx) => (
+                      <Fragment key={post._id}>
+                        <Link
+                          href={`/post/${post.slug.current}`}
+                          className="mobile-article-row"
+                        >
+                          {post.mainImage ? (
+                            <img
+                              src={urlFor(post.mainImage).width(240).height(240).url()}
+                              alt={post.title}
+                              className="mobile-article-thumb"
+                            />
+                          ) : (
+                            <div className="mobile-article-thumb img-placeholder">—</div>
+                          )}
+                          <div className="mobile-article-text">
+                            <div className="mobile-article-meta">
+                              {post.category && (
+                                <span className="mobile-article-cat">{post.category}</span>
+                              )}
+                            </div>
+                            <h3 className="mobile-article-title">{post.title}</h3>
+                            <div className="mobile-article-time">{timeAgo(post.publishedAt)}</div>
                           </div>
-                          <h3 className="mobile-article-title">{post.title}</h3>
-                          <div className="mobile-article-time">{timeAgo(post.publishedAt)}</div>
-                        </div>
-                      </Link>
+                        </Link>
+
+                        {/* Mobile: Future News widget after 1st rest-post
+                           (so it appears after 2nd article overall) */}
+                        {showFutureNews && idx === 0 && (
+                          <FutureNewsFeed items={futureNews} />
+                        )}
+                      </Fragment>
                     ))}
                   </div>
                 )}
