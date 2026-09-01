@@ -4834,3 +4834,182 @@ body.light .ticker-change.down { color: #f44336; }
     min-width: 52px;
   }
 }
+/* ════════════════════════════════════════════════════════════ */
+/* FUTURE NEWS v2 — Image, YES/NO colors, compact mode, nav anim */
+/* Append to END of globals.css                                  */
+/* ════════════════════════════════════════════════════════════ */
+
+/* ─── Card body with image + text ────────────────────────── */
+.fn-card-body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.fn-card-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+}
+
+.fn-card-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Prefix is inline block instead of block */
+.fn-card-prefix {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: inline-block;
+  margin: 0;
+}
+.fn-card-prefix.fn-yes { color: #4caf50; }
+.fn-card-prefix.fn-no { color: #f44336; }
+
+/* Headline — no longer contains prefix inline */
+.fn-card-headline {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── YES/NO color coding (overrides old prob-strong etc) ─ */
+.fn-card-prob.fn-yes { color: #4caf50; }
+.fn-card-prob.fn-no { color: #f44336; }
+.fn-card-bar-fill.fn-yes { background: #4caf50; }
+.fn-card-bar-fill.fn-no { background: #f44336; }
+
+/* Card border tint by sentiment on hover */
+.fn-card.fn-yes:hover { border-color: #4caf50; }
+.fn-card.fn-no:hover { border-color: #f44336; }
+
+/* Subtle left accent bar on the card itself */
+.fn-card {
+  position: relative;
+  overflow: hidden;
+}
+.fn-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transition: opacity 0.2s;
+  opacity: 0.6;
+}
+.fn-card.fn-yes::before { background: #4caf50; }
+.fn-card.fn-no::before { background: #f44336; }
+.fn-card:hover::before { opacity: 1; }
+
+/* ─── Compact card (homepage teaser) ─────────────────────── */
+.fn-card-compact {
+  padding: 14px 16px 14px 20px;
+  gap: 10px;
+}
+.fn-card-compact .fn-card-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+.fn-card-compact .fn-card-headline {
+  font-size: 14px;
+  -webkit-line-clamp: 2;
+}
+.fn-card-compact .fn-card-prob {
+  font-size: 24px;
+  min-width: 52px;
+}
+.fn-card-compact .fn-card-prob-row {
+  gap: 10px;
+}
+.fn-card-compact .fn-card-bar {
+  height: 5px;
+}
+
+/* Full card leaves extra left padding for the accent bar */
+.fn-card {
+  padding-left: 20px;
+}
+
+/* ─── Animated "Future" nav link ─────────────────────────── */
+.nav-link-future {
+  color: var(--accent) !important;
+  position: relative;
+}
+.nav-link-future:hover {
+  color: var(--accent) !important;
+  opacity: 0.75;
+}
+
+/* Bracket hover keeps working, but with accent color already */
+.nav-link-future::before,
+.nav-link-future::after {
+  color: var(--accent);
+}
+
+/* Pulsing dot next to Future */
+.nav-future-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: 6px;
+  animation: futurePulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.7);
+}
+
+@keyframes futurePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 107, 0, 0);
+    transform: scale(1.15);
+  }
+}
+
+/* Mobile menu Future link */
+.mobile-menu-link-future {
+  color: var(--accent) !important;
+  display: flex !important;
+  align-items: center;
+}
+.mobile-future-dot {
+  margin-left: 10px;
+}
+
+/* ─── Old rules to override ──────────────────────────────── */
+/* Kill the old prob-strong/high/mid rules since we use YES/NO now */
+.fn-card-prob.prob-strong,
+.fn-card-prob.prob-high,
+.fn-card-prob.prob-mid {
+  color: inherit;
+}
+.fn-card-bar-fill.prob-strong,
+.fn-card-bar-fill.prob-high,
+.fn-card-bar-fill.prob-mid {
+  background: inherit;
+}
