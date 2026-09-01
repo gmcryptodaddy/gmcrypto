@@ -1,5 +1,6 @@
 // components/FutureNewsFeed.js
-// Homepage teaser — shows top 3 Future News cards + link to full page.
+// Homepage teaser — shows top 3 Future News cards in compact mode.
+// Each card links to /future-news (not directly to Polymarket).
 
 import Link from 'next/link'
 import FutureNewsCard from './FutureNewsCard'
@@ -24,7 +25,7 @@ export default function FutureNewsFeed({ items }) {
 
       <div className="fn-teaser-grid">
         {top.map(item => (
-          <FutureNewsCard key={item.id} item={item} />
+          <FutureNewsCard key={item.id} item={item} compact />
         ))}
       </div>
     </div>
