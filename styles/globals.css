@@ -5013,3 +5013,38 @@ body.light .ticker-change.down { color: #f44336; }
 .fn-card-bar-fill.prob-mid {
   background: inherit;
 }
+/* ===== Google Preferred Source button (footer) ===== */
+.gpref-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 16px;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--bg2);
+  text-decoration: none;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.gpref-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg);
+}
+.gpref-g {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+  line-height: 1;
+}
+.gpref-arrow { font-size: 12px; opacity: .7; }
