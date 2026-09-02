@@ -11,6 +11,19 @@ export default function Footer() {
             Your daily dose of crypto news, market analysis, and blockchain insights.
           </p>
           <SocialIcons size="md" />
+
+          {/* Google Preferred Source — invites readers to prefer us in Google Search */}
+          <a
+            className="gpref-btn"
+            href="https://www.google.com/preferences/source?q=gmcrypto.news"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Add GM Crypto News as a preferred source in Google Search"
+          >
+            <span className="gpref-g" aria-hidden="true">G</span>
+            Set as Preferred Source
+            <span className="gpref-arrow" aria-hidden="true">↗</span>
+          </a>
         </div>
 
         <div className="footer-col">
