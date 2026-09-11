@@ -30,6 +30,25 @@ export default function Document() {
         />
       </Head>
       <body>
+        {/* Theme boot — runs before the page paints so light-mode users never
+            see a flash of the dark theme on load or navigation. Reads the same
+            'theme' key the Navbar toggle writes. Keep this the FIRST thing
+            inside <body>. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  if (localStorage.getItem('theme') === 'light') {
+                    document.body.classList.add('light');
+                    var m = document.querySelector('meta[name="theme-color"]');
+                    if (m) m.setAttribute('content', '#ffffff');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <Main />
         <NextScript />
       </body>
