@@ -14,6 +14,37 @@ function formatPrice(price) {
   return '$' + price.toFixed(4)
 }
 
+const PRICES_URL =
+  `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COIN_IDS.join(',')}` +
+  `&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
+
+// The homepage renders <Sidebar /> twice (desktop column + bottom-of-feed on
+// mobile). Without this shared cache each instance fetched independently AND
+// polled every 60s, doubling CoinGecko calls on a rate-limited free tier.
+// This dedupes: concurrent mounts share one in-flight request, and repeat
+// calls within the TTL reuse the last result.
+const priceCache = { data: null, ts: 0, inflight: null }
+const PRICE_TTL = 55000 // ms, just under the 60s refresh
+
+async function getSidebarPrices() {
+  const now = Date.now()
+  if (priceCache.data && now - priceCache.ts < PRICE_TTL) return priceCache.data
+  if (priceCache.inflight) return priceCache.inflight
+  priceCache.inflight = fetch(PRICES_URL)
+    .then(r => r.json())
+    .then(data => {
+      priceCache.data = data
+      priceCache.ts = Date.now()
+      priceCache.inflight = null
+      return data
+    })
+    .catch(err => {
+      priceCache.inflight = null
+      throw err
+    })
+  return priceCache.inflight
+}
+
 export default function Sidebar() {
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(false)
@@ -22,23 +53,25 @@ export default function Sidebar() {
   const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
-    async function fetchPrices() {
+    let cancelled = false
+    async function load() {
       try {
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COIN_IDS.join(',')}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
-        )
-        const data = await res.json()
+        const data = await getSidebarPrices()
+        if (cancelled) return
         setCoins(data)
-        setLastUpdated(new Date())
+        setLastUpdated(new Date(priceCache.ts))
       } catch (err) {
         console.error('Sidebar prices error:', err)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
-    fetchPrices()
-    const interval = setInterval(fetchPrices, 60000)
-    return () => clearInterval(interval)
+    load()
+    const interval = setInterval(load, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [])
 
   const handleSubscribe = (e) => {
