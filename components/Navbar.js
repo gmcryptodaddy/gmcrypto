@@ -45,9 +45,14 @@ export default function Navbar() {
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
+      const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false) }
+      window.addEventListener('keydown', onKey)
+      return () => {
+        document.body.style.overflow = ''
+        window.removeEventListener('keydown', onKey)
+      }
     }
+    document.body.style.overflow = ''
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
@@ -162,7 +167,8 @@ export default function Navbar() {
           <button
             className="nav-hamburger"
             onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Open menu"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="4" y1="7" x2="20" y2="7" />
