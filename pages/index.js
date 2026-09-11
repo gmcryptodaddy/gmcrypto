@@ -45,7 +45,9 @@ export default function Home({ posts, telegramPosts, futureNews }) {
   const scrollRef = useRef(null)
 
   const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(true)
+  // Start false; the mount effect measures overflow and flips it on if needed.
+  // (Starting true made the right arrow flash on wide screens where the pills fit.)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
@@ -227,6 +229,8 @@ export default function Home({ posts, telegramPosts, futureNews }) {
                               src={urlFor(post.mainImage).width(900).height(500).url()}
                               alt={post.title}
                               className="article-item-img"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <div className="article-item-img img-placeholder" style={{ height: 360 }}>[ no image ]</div>
@@ -296,6 +300,8 @@ export default function Home({ posts, telegramPosts, futureNews }) {
                             src={urlFor(heroPost.mainImage).width(800).height(450).url()}
                             alt={heroPost.title}
                             className="mobile-hero-img"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="mobile-hero-img img-placeholder">[ no image ]</div>
@@ -339,6 +345,8 @@ export default function Home({ posts, telegramPosts, futureNews }) {
                               src={urlFor(post.mainImage).width(240).height(240).url()}
                               alt={post.title}
                               className="mobile-article-thumb"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <div className="mobile-article-thumb img-placeholder">—</div>
