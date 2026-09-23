@@ -8,7 +8,10 @@ import FutureNewsCard from './FutureNewsCard'
 export default function FutureNewsFeed({ items }) {
   if (!items || items.length === 0) return null
 
-  const top = items.slice(0, 3)
+  // Homepage is the brand surface — lead with crypto predictions when we have
+  // them, and only fall back to the broader set if there are no crypto markets.
+  const crypto = items.filter(i => i.category === 'Crypto')
+  const top = (crypto.length > 0 ? crypto : items).slice(0, 3)
 
   return (
     <div className="fn-teaser">
