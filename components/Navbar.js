@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { client, urlFor } from '../lib/sanity'
+import SearchBox from './SearchBox'
 
 const NEWS_CATEGORIES = [
   { label: 'Breaking News', href: '/category/breaking-news' },
@@ -157,6 +158,8 @@ export default function Navbar() {
         </div>
 
         <div className="nav-right">
+          <SearchBox />
+
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
             <span className="toggle-label">{isDark ? 'GN' : 'GM'}</span>
             <span className="toggle-track">
