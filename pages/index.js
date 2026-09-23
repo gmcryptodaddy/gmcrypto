@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, Fragment } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import Navbar from '../components/Navbar'
 import Ticker from '../components/Ticker'
 import Sidebar from '../components/Sidebar'
@@ -39,6 +40,7 @@ const POSTS_PER_PAGE = 10
 const FUTURE_NEWS_INSERT_AFTER = 2
 
 export default function Home({ posts, telegramPosts, futureNews }) {
+  const router = useRouter()
   const allPosts = posts || []
   const [activeFilter, setActiveFilter] = useState('All')
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
@@ -52,6 +54,22 @@ export default function Home({ posts, telegramPosts, futureNews }) {
   useEffect(() => {
     setVisibleCount(POSTS_PER_PAGE)
   }, [activeFilter])
+
+  // Sync the active filter with the ?category= URL param. This is what makes
+  // every category link (navbar dropdowns, mega-dropdown, mobile menu, footer)
+  // actually filter the feed — they 308-redirect to /?category=Label — and it
+  // makes filtered views shareable/bookmarkable. Unknown labels (e.g. footer
+  // "Bitcoin News") simply show the empty state until those categories exist.
+  useEffect(() => {
+    if (!router.isReady) return
+    const q = router.query.category
+    if (typeof q === 'string' && q.trim()) {
+      const match = FILTERS.find(f => f.toLowerCase() === q.toLowerCase())
+      setActiveFilter(match || q)
+    } else {
+      setActiveFilter('All')
+    }
+  }, [router.isReady, router.query.category])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -90,6 +108,14 @@ export default function Home({ posts, telegramPosts, futureNews }) {
 
   const handleLoadMore = () => {
     setVisibleCount(prev => prev + POSTS_PER_PAGE)
+  }
+
+  // Update both the filter and the URL so the view is shareable and the
+  // browser back button works. Shallow routing avoids a full data refetch.
+  const selectFilter = (f) => {
+    setActiveFilter(f)
+    const url = f === 'All' ? '/' : `/?category=${encodeURIComponent(f)}`
+    router.push(url, undefined, { shallow: true, scroll: false })
   }
 
   const heroPost = visiblePosts[0] || null
@@ -175,7 +201,7 @@ export default function Home({ posts, telegramPosts, futureNews }) {
                 {FILTERS.map(f => (
                   <button
                     key={f}
-                    onClick={() => setActiveFilter(f)}
+                    onClick={() => selectFilter(f)}
                     className={`filter-pill ${activeFilter === f ? 'filter-pill-active' : ''}`}
                   >
                     {f}
@@ -202,7 +228,7 @@ export default function Home({ posts, telegramPosts, futureNews }) {
               <select
                 className="filter-dropdown"
                 value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value)}
+                onChange={(e) => selectFilter(e.target.value)}
               >
                 {FILTERS.map(f => (
                   <option key={f} value={f}>{f}</option>
