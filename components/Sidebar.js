@@ -47,7 +47,8 @@ async function getSidebarPrices() {
 
 export default function Sidebar() {
   const [email, setEmail] = useState('')
-  const [subscribed, setSubscribed] = useState(false)
+  const [status, setStatus] = useState('idle') // idle | loading | success | error | soon
+  const [message, setMessage] = useState('')
   const [coins, setCoins] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
@@ -74,9 +75,38 @@ export default function Sidebar() {
     }
   }, [])
 
-  const handleSubscribe = (e) => {
+  const handleSubscribe = async (e) => {
     e.preventDefault()
-    if (email) setSubscribed(true)
+    const value = email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setStatus('error')
+      setMessage('Enter a valid email.')
+      return
+    }
+    setStatus('loading')
+    setMessage('')
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setStatus('success')
+      } else if (data.error === 'not_configured') {
+        setStatus('soon')
+      } else if (data.error === 'invalid_email') {
+        setStatus('error')
+        setMessage('Enter a valid email.')
+      } else {
+        setStatus('error')
+        setMessage('Something went wrong. Try again.')
+      }
+    } catch {
+      setStatus('error')
+      setMessage('Something went wrong. Try again.')
+    }
   }
 
   return (
@@ -155,10 +185,10 @@ export default function Sidebar() {
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
           Get the top crypto stories delivered every morning.
         </p>
-        {subscribed ? (
-          <p style={{ color: 'var(--green)', fontSize: 13, fontWeight: 700 }}>
-            ✓ You're in. GM anon!
-          </p>
+        {status === 'success' ? (
+          <p className="newsletter-success">✓ You're in. GM anon!</p>
+        ) : status === 'soon' ? (
+          <p className="newsletter-success">🙌 Newsletter opening soon — you're early.</p>
         ) : (
           <>
             <input
@@ -167,10 +197,17 @@ export default function Sidebar() {
               placeholder="your@email.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSubscribe(e) }}
+              disabled={status === 'loading'}
             />
-            <button className="newsletter-btn" onClick={handleSubscribe}>
-              Subscribe Free →
+            <button
+              className="newsletter-btn"
+              onClick={handleSubscribe}
+              disabled={status === 'loading'}
+            >
+              {status === 'loading' ? 'Subscribing…' : 'Subscribe Free →'}
             </button>
+            {status === 'error' && <p className="newsletter-error">{message}</p>}
             <p className="newsletter-sub">No spam. Unsubscribe anytime.</p>
           </>
         )}
