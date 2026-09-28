@@ -3,11 +3,12 @@ import Link from 'next/link'
 import { PortableText } from '@portabletext/react'
 import Navbar from '../../components/Navbar'
 import Ticker from '../../components/Ticker'
-import Sidebar from '../../components/Sidebar'
 import Footer from '../../components/Footer'
 import ShareButton from '../../components/ShareButton'
 import ArticleReactions from '../../components/ArticleReactions'
 import SocialIcons from '../../components/SocialIcons'
+import ReadingProgress from '../../components/ReadingProgress'
+import NewsletterInline from '../../components/NewsletterInline'
 import { NewsArticleSchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
 import { singlePostQuery, allPostsQuery, relatedPostsQuery } from '../../lib/queries'
@@ -179,11 +180,19 @@ export default function PostPage({ post, relatedPosts }) {
       />
       <BreadcrumbSchema items={breadcrumbItems} />
 
+      <ReadingProgress />
       <Ticker />
       <Navbar />
 
-      <div className="article-wrap">
-        <article className="article-main">
+      <div className="article-page">
+        <aside className="article-share-rail">
+          <div className="article-share-rail-inner">
+            <ShareButton url={postUrl} title={post.title} />
+            <SocialIcons size="sm" />
+          </div>
+        </aside>
+
+        <article className="article-read">
           <div className="article-header">
             <div className="article-top-bar">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -289,6 +298,17 @@ export default function PostPage({ post, relatedPosts }) {
             </div>
           </div>
 
+          {post.keyTakeaways?.length > 0 && (
+            <div className="article-takeaways">
+              <div className="article-takeaways-title">Key takeaways</div>
+              <ul>
+                {post.keyTakeaways.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {post.mainImage && (
             <img
               className="article-cover"
@@ -312,15 +332,20 @@ export default function PostPage({ post, relatedPosts }) {
             )}
           </div>
 
-          <div style={{ marginTop: 48, padding: '20px', background: 'var(--bg2)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text3)' }}>
-            ⚠️ <strong style={{ color: 'var(--text2)' }}>Disclaimer:</strong> This article is for informational purposes only and does not constitute financial advice. Always do your own research before making investment decisions.
+          <div className="article-disclaimer">
+            <span className="article-disclaimer-icon" aria-hidden="true">⚠️</span>
+            <p><strong>Disclaimer:</strong> This article is for informational purposes only and does not constitute financial advice. Always do your own research before making investment decisions.</p>
           </div>
+
+          <NewsletterInline />
 
           {/* Emoji reactions — engagement signal, shown once the reader reaches the end */}
           <ArticleReactions postId={post._id} />
+        </article>
+      </div>
 
-          {hasRelated && (
-            <section className="related-posts">
+      {hasRelated && (
+        <section className="related-posts related-wrap">
               <div className="related-posts-header">
                 <h2 className="related-posts-title">
                   More {post.category ? `in ${post.category}` : 'from GM Crypto'}
@@ -366,10 +391,6 @@ export default function PostPage({ post, relatedPosts }) {
               </div>
             </section>
           )}
-        </article>
-
-        <Sidebar />
-      </div>
 
       <Footer />
     </>
