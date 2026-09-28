@@ -5178,3 +5178,165 @@ body.light .ticker-change.down { color: #f44336; }
   font-weight: 600;
   margin: 8px 0 0;
 }
+/* ============================================================
+   SPRINT 1 — Article reading rework + Live Markets tighten
+   Append to the END of styles/globals.css
+   (This is separate from the Search+Newsletter block from the
+    previous step — add this after it.)
+   ============================================================ */
+
+/* ── Reading progress bar ─────────────────────────────────── */
+.reading-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 4000;
+  pointer-events: none;
+  background: transparent;
+}
+.reading-progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.1s linear;
+}
+
+/* ── Centered reading column ──────────────────────────────── */
+.article-page {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 56px;
+}
+
+/* ── Key takeaways box ────────────────────────────────────── */
+.article-takeaways {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin: 0 0 32px;
+}
+.article-takeaways-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.article-takeaways ul { margin: 0; padding-left: 18px; }
+.article-takeaways li {
+  color: var(--text2);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+.article-takeaways li:last-child { margin-bottom: 0; }
+
+/* ── Styled disclaimer callout ────────────────────────────── */
+.article-disclaimer {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 44px;
+  padding: 16px 18px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.article-disclaimer-icon { font-size: 16px; line-height: 1.5; flex-shrink: 0; }
+.article-disclaimer p { margin: 0; font-size: 12.5px; color: var(--text3); line-height: 1.6; }
+.article-disclaimer strong { color: var(--text2); }
+
+/* ── Sticky share rail (desktop left gutter) ──────────────── */
+.article-share-rail {
+  position: absolute;
+  top: 0;
+  left: -76px;
+  height: 100%;
+}
+.article-share-rail-inner {
+  position: sticky;
+  top: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+@media (max-width: 1024px) {
+  .article-share-rail { display: none; }
+}
+
+/* ── Inline newsletter ────────────────────────────────────── */
+.nl-inline {
+  margin: 40px 0;
+  padding: 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  text-align: center;
+}
+.nl-inline-title { font-size: 20px; font-weight: 800; color: var(--text); }
+.nl-inline-sub { font-size: 14px; color: var(--text2); margin-top: 4px; }
+.nl-inline-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.nl-inline-input {
+  flex: 1 1 240px;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+.nl-inline-input:focus { border-color: var(--accent); }
+.nl-inline-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.nl-inline-btn:disabled { opacity: 0.6; cursor: default; }
+.nl-inline-done { margin-top: 14px; color: var(--green, #22c55e); font-weight: 700; font-size: 14px; }
+.nl-inline-err { flex-basis: 100%; color: #ef4444; font-size: 12px; margin: 4px 0 0; }
+
+/* ── Related posts: wider than the reading column ─────────── */
+.related-wrap {
+  max-width: 1040px;
+  margin: 8px auto 0;
+  padding: 0 20px 64px;
+}
+
+/* ── Live Markets tighten ─────────────────────────────────── */
+.market-item { padding: 8px 0; }
+.market-item-cluster {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+/* Cap the wide bottom-of-feed sidebar on mobile so rows aren't stretched */
+.mobile-sidebar-wrap {
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.mobile-sidebar-wrap .widget {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+}
