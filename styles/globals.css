@@ -5340,3 +5340,102 @@ body.light .ticker-change.down { color: #f44336; }
   padding-bottom: 18px;
   margin-bottom: 18px;
 }
+/* ============================================================
+   SPRINT 2 — Universal search (pill + ⌘K + coins)
+   Append to the END of styles/globals.css
+   (Reuses the .search-overlay / .search-panel / .search-input
+    styles from the earlier Search step — add this after them.)
+   ============================================================ */
+
+/* ── Navbar search pill ───────────────────────────────────── */
+.nav-search-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px 0 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text3);
+  font-family: inherit;
+  font-size: 13px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.nav-search-pill:hover { border-color: var(--accent); color: var(--text2); }
+.nav-search-pill svg { width: 16px; height: 16px; flex-shrink: 0; }
+.nav-search-pill-text { font-weight: 500; }
+.nav-search-kbd {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 1px 5px;
+  background: var(--bg);
+}
+/* Collapse to an icon-only button on small screens */
+@media (max-width: 720px) {
+  .nav-search-pill {
+    padding: 0;
+    width: 34px;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  .nav-search-pill-text,
+  .nav-search-kbd { display: none; }
+}
+
+/* ── Section labels (Coins / Articles) ────────────────────── */
+.search-section-label {
+  padding: 10px 16px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+/* ── Result rows are now <button>s: reset + keyboard highlight ── */
+.search-result {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.search-result.active,
+.search-result:hover { background: var(--bg2); }
+
+/* ── Coin rows ────────────────────────────────────────────── */
+.search-coin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.search-coin-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.search-coin-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
