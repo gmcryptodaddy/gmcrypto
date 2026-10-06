@@ -5567,3 +5567,73 @@ body.light .ticker-change.down { color: #f44336; }
   padding: 2px;
 }
 .wl-card-remove:hover { color: #ef4444; }
+/* ============================================================
+   SPRINT 4 — Homepage IA (lead story + section label)
+   Append to the END of styles/globals.css
+   ============================================================ */
+
+/* ── Lead story (desktop feed) ────────────────────────────── */
+.lead-story {
+  padding: 0 36px 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.lead-story-imglink { display: block; }
+.lead-story-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  display: block;
+}
+.lead-story-body { max-width: 100%; }
+.lead-story-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.lead-story-cat {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.lead-story-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text3);
+}
+.lead-story-title {
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 12px;
+  transition: color 0.15s;
+}
+.lead-story-title:hover { color: var(--accent); }
+.lead-story-excerpt {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text2);
+  margin: 0 0 14px;
+}
+
+/* ── Section label between the lead and the rest of the feed ── */
+.home-section-label {
+  padding: 20px 36px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+/* Smaller lead title on narrower desktop widths */
+@media (max-width: 1100px) {
+  .lead-story-title { font-size: 27px; }
+}
