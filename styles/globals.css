@@ -5439,3 +5439,131 @@ body.light .ticker-change.down { color: #f44336; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* ============================================================
+   SPRINT 3 — Watchlist (star toggle + markets widget)
+   Append to the END of styles/globals.css
+   ============================================================ */
+
+/* ── Star toggle (icon-only, used in table rows) ──────────── */
+.wl-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.wl-star:hover { color: var(--accent); }
+.wl-star.active { color: var(--accent); }
+.wl-star-icon { font-size: 16px; }
+
+/* Labeled variant: the "Watch / Watching" button on the coin page */
+.wl-star-labeled {
+  border: 1px solid var(--border2);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-top: 10px;
+}
+.wl-star-labeled:hover { border-color: var(--accent); color: var(--accent); }
+.wl-star-labeled.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255, 107, 0, 0.08);
+}
+
+/* Star + name in a markets table row */
+.coin-cell { display: flex; align-items: center; gap: 8px; }
+
+/* ── Watchlist widget (markets page) ──────────────────────── */
+.wl-widget { margin: 0 0 24px; }
+.wl-widget-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.wl-widget-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+.wl-widget-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.wl-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.wl-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.15s;
+}
+.wl-card:hover { border-color: var(--border2); }
+.wl-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  min-width: 0;
+}
+.wl-card-sym { font-size: 13px; font-weight: 800; color: var(--text); }
+.wl-card-name {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.wl-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin-right: 14px;
+}
+.wl-card-price { font-size: 13px; font-weight: 700; color: var(--text); }
+.wl-card-chg { font-size: 11px; font-weight: 600; }
+.wl-card-chg.up { color: var(--green, #22c55e); }
+.wl-card-chg.down { color: #ef4444; }
+.wl-card-remove {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px;
+}
+.wl-card-remove:hover { color: #ef4444; }
