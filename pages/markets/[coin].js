@@ -20,6 +20,7 @@ import Ticker from '../../components/Ticker'
 import Footer from '../../components/Footer'
 import { CryptocurrencySchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
+import WatchlistStar from '../../components/WatchlistStar'
 import { getCoinFromSnapshot } from '../../lib/coin-snapshot'
 import {
   getCoinDetails,
@@ -318,6 +319,7 @@ export default function CoinPage({ coin: initialCoin, relatedArticles, isPlaceho
                   {coinName}
                   {symbolUpper && <span className="coin-header-symbol">{symbolUpper}</span>}
                 </h1>
+                <WatchlistStar id={coin.id} symbol={coin.symbol} name={coinName} label className="coin-header-watch" />
               </div>
             </div>
 
