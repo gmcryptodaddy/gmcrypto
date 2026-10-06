@@ -244,7 +244,52 @@ export default function Home({ posts, telegramPosts, futureNews }) {
             <>
               {/* DESKTOP article list */}
               <div className="article-list">
-                {visiblePosts.map((post, idx) => {
+                {/* Lead story */}
+                {heroPost && (() => {
+                  const leadHashtags = generateHashtags(heroPost.title, heroPost.category, 3)
+                  return (
+                    <article className="lead-story">
+                      <Link href={`/post/${heroPost.slug.current}`} className="lead-story-imglink">
+                        {heroPost.mainImage ? (
+                          <img
+                            src={urlFor(heroPost.mainImage).width(1000).height(560).url()}
+                            alt={heroPost.title}
+                            className="lead-story-img"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="lead-story-img img-placeholder" style={{ height: 420 }}>[ no image ]</div>
+                        )}
+                      </Link>
+                      <div className="lead-story-body">
+                        <div className="lead-story-meta">
+                          {heroPost.category && <span className="lead-story-cat">{heroPost.category}</span>}
+                          <span className="lead-story-time">{timeAgo(heroPost.publishedAt)}</span>
+                        </div>
+                        <Link href={`/post/${heroPost.slug.current}`}>
+                          <h2 className="lead-story-title">{heroPost.title}</h2>
+                        </Link>
+                        {heroPost.excerpt && <p className="lead-story-excerpt">{heroPost.excerpt}</p>}
+                        {leadHashtags.length > 0 && (
+                          <div className="article-item-hashtags">
+                            {leadHashtags.map(tag => (
+                              <span key={tag} className="article-hashtag">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                        <Link href={`/post/${heroPost.slug.current}`} className="article-read-btn">Read</Link>
+                      </div>
+                    </article>
+                  )
+                })()}
+
+                {/* Future News module (right under the lead) */}
+                {showFutureNews && <FutureNewsFeed items={futureNews} />}
+
+                {restPosts.length > 0 && <div className="home-section-label">Latest stories</div>}
+
+                {restPosts.map((post) => {
                   const hashtags = generateHashtags(post.title, post.category, 3)
                   return (
                     <Fragment key={post._id}>
@@ -304,11 +349,6 @@ export default function Home({ posts, telegramPosts, futureNews }) {
                           <span className="article-item-time">{timeAgo(post.publishedAt)}</span>
                         </div>
                       </article>
-
-                      {/* Insert Future News widget after the 2nd article */}
-                      {showFutureNews && idx === FUTURE_NEWS_INSERT_AFTER - 1 && (
-                        <FutureNewsFeed items={futureNews} />
-                      )}
                     </Fragment>
                   )
                 })}
