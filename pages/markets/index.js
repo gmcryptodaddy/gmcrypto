@@ -24,6 +24,8 @@ import Navbar from '../../components/Navbar'
 import Ticker from '../../components/Ticker'
 import Footer from '../../components/Footer'
 import Sparkline from '../../components/Sparkline'
+import WatchlistStar from '../../components/WatchlistStar'
+import WatchlistWidget from '../../components/WatchlistWidget'
 import {
   getGlobalStats,
   getCoinsMarkets,
@@ -223,6 +225,8 @@ export default function MarketsPage({ globalStats, allCoins }) {
           </div>
         </section>
 
+        <WatchlistWidget />
+
         <div className="markets-controls">
           <input
             type="text"
@@ -298,13 +302,16 @@ export default function MarketsPage({ globalStats, allCoins }) {
                         <tr key={coin.id}>
                           <td className="rank">{coin.market_cap_rank || '—'}</td>
                           <td>
-                            <Link href={`/markets/${coin.id}`} className="coin-link">
+                            <div className="coin-cell">
+                              <WatchlistStar id={coin.id} symbol={coin.symbol} name={coin.name} />
+                              <Link href={`/markets/${coin.id}`} className="coin-link">
                               <img src={coin.image} alt={coin.name} className="coin-img" />
                               <div className="coin-name-wrap">
                                 <span className="coin-name">{coin.name}</span>
                                 <span className="coin-symbol">{coin.symbol?.toUpperCase()}</span>
                               </div>
                             </Link>
+                            </div>
                           </td>
                           <td className="right price">{formatPrice(coin.current_price)}</td>
                           <td className={`right ${coin.price_change_percentage_1h_in_currency >= 0 ? 'up' : 'down'}`}>
