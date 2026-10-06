@@ -1,5 +1,7 @@
 // components/Sparkline.js
-// Tiny inline SVG chart for each row of the markets table.
+// Tiny inline SVG chart for each row of the markets table / sidebar.
+// preserveAspectRatio="none" lets it stretch to whatever width CSS gives it
+// (used in the Live Markets sidebar, where the chart fills the row).
 
 export default function Sparkline({ data, positive = true, width = 120, height = 40 }) {
   if (!data || data.length === 0) return null
@@ -23,6 +25,7 @@ export default function Sparkline({ data, positive = true, width = 120, height =
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
       style={{ display: 'block' }}
     >
       <polyline
