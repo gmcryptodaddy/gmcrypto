@@ -185,7 +185,7 @@ export default function Sidebar() {
       <div className="widget">
         <div className="widget-title">GM Newsletter</div>
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
-          Get the top crypto stories delivered every morning.
+          Get the top crypto stories delivered weekly.
         </p>
         {status === 'success' ? (
           <p className="newsletter-success">✓ You're in. GM anon!</p>
