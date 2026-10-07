@@ -151,7 +151,7 @@ export default function Sidebar() {
 
                   {last24h.length > 0 ? (
                     <div className="market-spark">
-                      <Sparkline data={last24h} positive={up} width={64} height={22} />
+                      <Sparkline data={last24h} positive={up} width={84} height={22} />
                     </div>
                   ) : (
                     <div className="market-spark" />
