@@ -5712,3 +5712,59 @@ body.light .ticker-change.down { color: #f44336; }
 
 /* Keep the mobile bottom-of-feed sidebar tidy */
 .mobile-sidebar-wrap { max-width: 420px; }
+/* ============================================================
+   FIX v3 (final) — Live Markets rows: centered, aligned group
+   Append to the END of styles/globals.css
+   (Overrides ALL previous market-row attempts. name + chart +
+    price sit as one tight centered group, so there's no void at
+    any width. The chart scales uniformly — no distortion.)
+   ============================================================ */
+
+.market-item {
+  display: grid;
+  grid-template-columns: minmax(80px, 110px) minmax(64px, 96px) minmax(70px, 86px);
+  justify-content: center;   /* keep the group together, centered in the row */
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 0;
+}
+
+/* Column 1 — icon + ticker + name */
+.market-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: initial;
+}
+.market-item-left > div { min-width: 0; }
+.market-item-left .market-price {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Column 2 — sparkline fills its column and scales uniformly (no distortion) */
+.market-spark {
+  justify-self: stretch;
+  width: auto;
+  min-width: 0;
+  flex: initial;
+  opacity: 0.9;
+}
+.market-spark svg {
+  width: 100%;
+  height: auto;
+  max-height: 24px;
+  display: block;
+}
+
+/* Column 3 — price + change, right-aligned */
+.market-item-right {
+  justify-self: end;
+  text-align: right;
+  min-width: 0;
+}
+
+/* Mobile bottom-of-feed sidebar */
+.mobile-sidebar-wrap { max-width: 440px; }
