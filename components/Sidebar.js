@@ -149,20 +149,20 @@ export default function Sidebar() {
                     </div>
                   </div>
 
-                  <div className="market-item-cluster">
-                    {last24h.length > 0 && (
-                      <div className="market-spark">
-                        <Sparkline data={last24h} positive={up} width={56} height={22} />
-                      </div>
-                    )}
+                  {last24h.length > 0 ? (
+                    <div className="market-spark">
+                      <Sparkline data={last24h} positive={up} width={64} height={22} />
+                    </div>
+                  ) : (
+                    <div className="market-spark" />
+                  )}
 
-                    <div className="market-item-right">
-                      <div className="market-item-value">
-                        {formatPrice(coin.current_price)}
-                      </div>
-                      <div className={`market-change ${up ? 'up' : 'down'}`}>
-                        {up ? '+' : ''}{change?.toFixed(2)}%
-                      </div>
+                  <div className="market-item-right">
+                    <div className="market-item-value">
+                      {formatPrice(coin.current_price)}
+                    </div>
+                    <div className={`market-change ${up ? 'up' : 'down'}`}>
+                      {up ? '+' : ''}{change?.toFixed(2)}%
                     </div>
                   </div>
                 </Link>
