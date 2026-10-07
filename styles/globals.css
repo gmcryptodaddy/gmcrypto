@@ -5659,3 +5659,56 @@ body.light .ticker-change.down { color: #f44336; }
 
 /* Tighten the mobile bottom-of-feed sidebar a touch more. */
 .mobile-sidebar-wrap { max-width: 380px; }
+/* ============================================================
+   FIX v2 — Live Markets rows: proper grid layout
+   Append to the END of styles/globals.css
+   (Overrides the previous market-row attempt. Chart sits right
+    next to the asset name and keeps its real shape; price locks
+    to the right edge. Works on desktop sidebar and mobile.)
+   ============================================================ */
+
+.market-item {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) minmax(64px, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 8px 0;
+}
+
+/* Column 1 — icon + ticker + name */
+.market-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: initial; /* cancel the old flex:1 that caused the gap */
+}
+.market-item-left .market-price {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Column 2 — sparkline, fixed size, flush to the name */
+.market-spark {
+  justify-self: start;
+  width: 64px;
+  height: 22px;
+  flex: initial;
+  opacity: 0.9;
+}
+.market-spark svg {
+  width: 64px;
+  height: 22px;
+  display: block;
+}
+
+/* Column 3 — price + change, locked to the right edge */
+.market-item-right {
+  justify-self: end;
+  text-align: right;
+  min-width: 0;
+}
+
+/* Keep the mobile bottom-of-feed sidebar tidy */
+.mobile-sidebar-wrap { max-width: 420px; }
