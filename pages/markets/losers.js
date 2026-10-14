@@ -36,7 +36,7 @@ export default function LosersPage({ coins }) {
           <div className="movers-hero-tag losers-tag">24h Losers</div>
           <h1 className="movers-hero-title">Top Crypto Losers</h1>
           <p className="movers-hero-sub">
-            The biggest 24-hour price drops across the top 250 cryptocurrencies by market cap. Refreshed on each visit.
+            The biggest 24-hour price drops across the top 250 cryptocurrencies by market cap. Updated every few minutes.
           </p>
 
           <div className="movers-tabs">
@@ -103,12 +103,12 @@ export default function LosersPage({ coins }) {
   )
 }
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   try {
     const coins = await getTopMovers({ direction: 'losers', limit: 50 })
-    return { props: { coins: coins || [] } }
+    return { props: { coins: coins || [] }, revalidate: 300 }
   } catch (error) {
     console.error('Losers page error:', error)
-    return { props: { coins: [] } }
+    return { props: { coins: [] }, revalidate: 60 }
   }
 }
