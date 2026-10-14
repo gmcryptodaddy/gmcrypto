@@ -116,7 +116,7 @@ export default function ExchangesPage({ exchanges, btcPriceUsd }) {
   )
 }
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   try {
     const [exchanges, btcData] = await Promise.all([
       getExchanges({ perPage: 20, page: 1 }),
@@ -134,9 +134,10 @@ export async function getServerSideProps() {
         exchanges: finalList,
         btcPriceUsd,
       },
+      revalidate: 600,
     }
   } catch (error) {
     console.error('Exchanges page error:', error)
-    return { props: { exchanges: [], btcPriceUsd: null } }
+    return { props: { exchanges: [], btcPriceUsd: null }, revalidate: 60 }
   }
 }
