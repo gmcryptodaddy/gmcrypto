@@ -129,24 +129,34 @@ export default function MarketsPage({ globalStats, allCoins }) {
     }
   }, [page, router])
 
-  // CLIENT-SIDE PAGINATION: just slice the full array. No API call.
-  const pageCoins = useMemo(() => {
+  // Sort the FULL list first, then paginate — so sorting applies across all
+  // ~1000 coins, not just the current page. (Previously it only sorted the
+  // 100 coins already on screen, which was misleading.)
+  const sortedAll = useMemo(() => {
     if (!Array.isArray(allCoins)) return []
-    const start = (page - 1) * PER_PAGE
-    const end = start + PER_PAGE
-    return allCoins.slice(start, end)
-  }, [allCoins, page])
-
-  // Sort the current page's slice
-  const sortedCoins = useMemo(() => {
-    return [...pageCoins].sort((a, b) => {
-      const av = a[sortBy] ?? 0
-      const bv = b[sortBy] ?? 0
+    return [...allCoins].sort((a, b) => {
+      const av = a[sortBy]
+      const bv = b[sortBy]
+      // Push missing values to the bottom regardless of direction
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
       if (av < bv) return sortDir === 'asc' ? -1 : 1
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [pageCoins, sortBy, sortDir])
+  }, [allCoins, sortBy, sortDir])
+
+  // CLIENT-SIDE PAGINATION on the sorted list. No API call.
+  const pageCoins = useMemo(() => {
+    const start = (page - 1) * PER_PAGE
+    return sortedAll.slice(start, start + PER_PAGE)
+  }, [sortedAll, page])
+
+  // Helpers for the sortable column headers
+  const sortArrow = (k) =>
+    sortBy === k ? <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span> : null
+  const thClass = (k, base) => `${base}${sortBy === k ? ' sorted' : ''}`
 
   const isSearching = debouncedSearch.length >= 1
   const isPaginatedView = page > 1
@@ -274,7 +284,7 @@ export default function MarketsPage({ globalStats, allCoins }) {
                 <div style={{ textAlign: 'center', padding: 48, color: 'var(--text3)' }}>
                   Prices are temporarily unavailable. Refresh in a moment.
                 </div>
-              ) : sortedCoins.length === 0 ? (
+              ) : pageCoins.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 48, color: 'var(--text3)' }}>
                   No coins on this page.
                 </div>
@@ -282,19 +292,19 @@ export default function MarketsPage({ globalStats, allCoins }) {
                 <table className="markets-table">
                   <thead>
                     <tr>
-                      <th onClick={() => handleSort('market_cap_rank')} className="sortable">#</th>
+                      <th onClick={() => handleSort('market_cap_rank')} className={thClass('market_cap_rank', 'sortable')}>#{sortArrow('market_cap_rank')}</th>
                       <th className="coin-col">Coin</th>
-                      <th onClick={() => handleSort('current_price')} className="sortable right">Price</th>
-                      <th onClick={() => handleSort('price_change_percentage_1h_in_currency')} className="sortable right">1h</th>
-                      <th onClick={() => handleSort('price_change_percentage_24h_in_currency')} className="sortable right">24h</th>
-                      <th onClick={() => handleSort('price_change_percentage_7d_in_currency')} className="sortable right">7d</th>
-                      <th onClick={() => handleSort('total_volume')} className="sortable right">Volume (24h)</th>
-                      <th onClick={() => handleSort('market_cap')} className="sortable right">Market Cap</th>
+                      <th onClick={() => handleSort('current_price')} className={thClass('current_price', 'sortable right')}>Price{sortArrow('current_price')}</th>
+                      <th onClick={() => handleSort('price_change_percentage_1h_in_currency')} className={thClass('price_change_percentage_1h_in_currency', 'sortable right')}>1h{sortArrow('price_change_percentage_1h_in_currency')}</th>
+                      <th onClick={() => handleSort('price_change_percentage_24h_in_currency')} className={thClass('price_change_percentage_24h_in_currency', 'sortable right')}>24h{sortArrow('price_change_percentage_24h_in_currency')}</th>
+                      <th onClick={() => handleSort('price_change_percentage_7d_in_currency')} className={thClass('price_change_percentage_7d_in_currency', 'sortable right')}>7d{sortArrow('price_change_percentage_7d_in_currency')}</th>
+                      <th onClick={() => handleSort('total_volume')} className={thClass('total_volume', 'sortable right')}>Volume (24h){sortArrow('total_volume')}</th>
+                      <th onClick={() => handleSort('market_cap')} className={thClass('market_cap', 'sortable right')}>Market Cap{sortArrow('market_cap')}</th>
                       <th className="right">Last 7 days</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedCoins.map((coin) => {
+                    {pageCoins.map((coin) => {
                       const sparkData = coin.sparkline_in_7d?.price || []
                       const sparkPositive =
                         sparkData.length > 1 && sparkData[sparkData.length - 1] >= sparkData[0]
