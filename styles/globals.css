@@ -5811,3 +5811,19 @@ body.light .ticker-change.down { color: #f44336; }
 @media (max-width: 1100px) {
   .article-share-rail { display: none; }
 }
+/* ============================================================
+   MARKETS SPRINT 1 — sortable header indicators
+   Append to the END of styles/globals.css
+   ============================================================ */
+
+.markets-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.markets-table th.sortable:hover { color: var(--text); }
+.markets-table th.sorted { color: var(--accent); }
+.sort-arrow {
+  font-size: 9px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
