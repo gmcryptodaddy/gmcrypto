@@ -33,10 +33,7 @@ export default function ConverterPage({ coins }) {
   useEffect(() => {
     async function loadFiats() {
       try {
-        const vsList = FIAT_CURRENCIES.map(f => f.id).join(',')
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=${vsList}`
-        )
+        const res = await fetch('/api/fiat-rates')
         const data = await res.json()
         setFiatRates(data || {})
       } catch (err) {
@@ -242,12 +239,12 @@ export default function ConverterPage({ coins }) {
   )
 }
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   try {
     const coins = await getCoinsMarkets({ page: 1, perPage: 100 })
-    return { props: { coins: coins || [] } }
+    return { props: { coins: coins || [] }, revalidate: 300 }
   } catch (error) {
     console.error('Converter page error:', error)
-    return { props: { coins: [] } }
+    return { props: { coins: [] }, revalidate: 60 }
   }
 }
