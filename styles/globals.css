@@ -5827,3 +5827,55 @@ body.light .ticker-change.down { color: #f44336; }
   margin-left: 4px;
   vertical-align: middle;
 }
+/* ============================================================
+   MARKETS SPRINT 3 — CoinGecko fallback chart
+   Append to the END of styles/globals.css
+   ============================================================ */
+
+.cg-chart { width: 100%; }
+
+.cg-chart-ranges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.cg-range {
+  padding: 6px 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text2);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.cg-range:hover { border-color: var(--accent); color: var(--text); }
+.cg-range.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.cg-chart-canvas { width: 100%; }
+.cg-chart-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--text3);
+  font-size: 14px;
+  background: var(--bg);
+  z-index: 1;
+}
+.cg-chart-credit {
+  font-size: 11px;
+  color: var(--text3);
+  text-align: right;
+  margin-top: 8px;
+}
