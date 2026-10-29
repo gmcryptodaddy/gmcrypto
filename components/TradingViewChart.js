@@ -83,7 +83,14 @@ function resolveTvSymbol(coinSymbol) {
   return `BINANCE:${coinSymbol.toUpperCase()}USDT`
 }
 
-export default function TradingViewChart({ symbol, coinName }) {
+// Only the curated symbols are guaranteed to render on TradingView. Everything
+// else is served a CoinGecko-data chart instead, so no coin shows a blank chart.
+export function isTradingViewSupported(coinSymbol) {
+  if (!coinSymbol) return false
+  return Boolean(TV_SYMBOL_OVERRIDES[coinSymbol.toLowerCase()])
+}
+
+export default function TradingViewChart({ symbol, coinName, theme = 'dark' }) {
   const containerRef = useRef(null)
   const tvSymbol = resolveTvSymbol(symbol)
 
@@ -120,7 +127,7 @@ export default function TradingViewChart({ symbol, coinName }) {
       symbol: tvSymbol,
       interval: 'D',
       timezone: 'Etc/UTC',
-      theme: 'dark',
+      theme: theme === 'light' ? 'light' : 'dark',
       style: '1',                     // 1 = Candles
       locale: 'en',
       withdateranges: true,
@@ -134,7 +141,7 @@ export default function TradingViewChart({ symbol, coinName }) {
       hotlist: false,
       calendar: false,
       backgroundColor: 'rgba(0, 0, 0, 0)',
-      gridColor: 'rgba(255, 255, 255, 0.04)',
+      gridColor: theme === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.04)',
       support_host: 'https://www.tradingview.com',
     }
 
@@ -148,7 +155,7 @@ export default function TradingViewChart({ symbol, coinName }) {
     return () => {
       if (container) container.innerHTML = ''
     }
-  }, [tvSymbol, coinName, symbol])
+  }, [tvSymbol, coinName, symbol, theme])
 
   return (
     <div
