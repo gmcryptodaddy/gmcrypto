@@ -21,6 +21,7 @@ import Footer from '../../components/Footer'
 import { CryptocurrencySchema, BreadcrumbSchema } from '../../components/StructuredData'
 import { client, urlFor } from '../../lib/sanity'
 import WatchlistStar from '../../components/WatchlistStar'
+import { isTradingViewSupported } from '../../components/TradingViewChart'
 import { getCoinFromSnapshot } from '../../lib/coin-snapshot'
 import {
   getCoinDetails,
@@ -31,6 +32,11 @@ import {
 } from '../../lib/coingecko'
 
 const SITE_URL = 'https://www.gmcrypto.news'
+
+const CoinGeckoChart = dynamic(() => import('../../components/CoinGeckoChart'), {
+  ssr: false,
+  loading: () => <div className="coin-chart-loading" style={{ height: 440, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart…</div>,
+})
 
 const TradingViewChart = dynamic(() => import('../../components/TradingViewChart'), {
   ssr: false,
@@ -84,6 +90,16 @@ export default function CoinPage({ coin: initialCoin, relatedArticles, isPlaceho
   const [liveMarketCap, setLiveMarketCap] = useState(null)
   const [liveVolume, setLiveVolume] = useState(null)
   const [priceLoading, setPriceLoading] = useState(true)
+
+  // Follow the site's light/dark toggle so the chart matches the page.
+  const [chartTheme, setChartTheme] = useState('dark')
+  useEffect(() => {
+    const read = () => setChartTheme(document.body.classList.contains('light') ? 'light' : 'dark')
+    read()
+    const obs = new MutationObserver(read)
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
   const [showFullAbout, setShowFullAbout] = useState(false)
   const [retrying, setRetrying] = useState(false)
 
@@ -349,7 +365,11 @@ export default function CoinPage({ coin: initialCoin, relatedArticles, isPlaceho
         </section>
 
         <section className="coin-chart-section">
-          <TradingViewChart symbol={symbolUpper} coinName={coinName} />
+          {isTradingViewSupported(symbolUpper) ? (
+            <TradingViewChart symbol={symbolUpper} coinName={coinName} theme={chartTheme} />
+          ) : (
+            <CoinGeckoChart coinId={coin.id} coinName={coinName} theme={chartTheme} />
+          )}
         </section>
 
         <section className="coin-stats-grid">
