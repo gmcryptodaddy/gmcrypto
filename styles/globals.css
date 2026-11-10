@@ -6006,3 +6006,22 @@ body.light .ticker-change.down { color: #f44336; }
   .mini-stat-value,
   .markets-overview-chart-value { font-size: 17px; }
 }
+/* ============================================================
+   MARKETS overview — fix oversized stat cards
+   Append to the END of styles/globals.css
+   (Overrides the earlier .markets-overview-stats / .mini-stat sizing.)
+   ============================================================ */
+
+/* Cards size to their content and the 2x2 block centers vertically
+   next to the (taller) chart, instead of each card stretching tall. */
+.markets-overview-stats {
+  grid-auto-rows: min-content;
+  align-content: center;
+  gap: 10px;
+}
+.mini-stat {
+  padding: 13px 15px;
+  gap: 3px;
+}
+.mini-stat-label { font-size: 10.5px; }
+.mini-stat-value { font-size: 19px; }
