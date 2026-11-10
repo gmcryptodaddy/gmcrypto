@@ -6025,3 +6025,130 @@ body.light .ticker-change.down { color: #f44336; }
 }
 .mini-stat-label { font-size: 10.5px; }
 .mini-stat-value { font-size: 19px; }
+/* ============================================================
+   MARKETS — Market Cap Calculator
+   Append to the END of styles/globals.css
+   ============================================================ */
+
+.mcap-calc { max-width: 760px; margin: 24px auto 0; }
+
+.mcap-calc-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.mcap-calc-field {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mcap-calc-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text3);
+}
+.mcap-calc-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.mcap-calc-select:focus { border-color: var(--accent); }
+.mcap-calc-arrow {
+  padding-bottom: 12px;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mcap-calc-custom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.mcap-calc-custom-prefix { color: var(--text3); font-weight: 700; }
+.mcap-calc-custom-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+.mcap-calc-custom-input:focus { border-color: var(--accent); }
+.mcap-calc-custom-unit {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mcap-calc-result {
+  margin-top: 20px;
+  padding: 28px 24px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  text-align: center;
+}
+.mcap-calc-result-empty { color: var(--text3); font-size: 15px; padding: 10px 0; }
+.mcap-calc-result-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  color: var(--text2);
+  font-size: 15px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.mcap-calc-result-head strong { color: var(--text); }
+.mcap-calc-result-img { width: 22px; height: 22px; border-radius: 50%; }
+.mcap-calc-result-price {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.mcap-calc-result-mult { margin-top: 8px; font-size: 16px; font-weight: 700; }
+.mcap-calc-result-mult.up { color: var(--green, #22c55e); }
+.mcap-calc-result-mult.down { color: #ef4444; }
+.mcap-calc-result-current { color: var(--text3); font-weight: 500; font-size: 14px; }
+.mcap-calc-result-stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.mcap-calc-result-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.mcap-calc-result-stats span {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mcap-calc-result-stats strong { font-size: 15px; color: var(--text); font-weight: 700; }
+
+@media (max-width: 560px) {
+  .mcap-calc-arrow { display: none; }
+  .mcap-calc-result-price { font-size: 32px; }
+}
