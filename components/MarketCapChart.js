@@ -13,6 +13,15 @@ const RANGES = [
   { label: '1Y', days: '365' },
 ]
 
+function fmtCompactUsd(v) {
+  if (v == null || isNaN(v)) return ''
+  const abs = Math.abs(v)
+  if (abs >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T'
+  if (abs >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B'
+  if (abs >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M'
+  return '$' + v.toFixed(0)
+}
+
 function useBodyTheme() {
   const [theme, setTheme] = useState('dark')
   useEffect(() => {
@@ -63,6 +72,9 @@ export default function MarketCapChart() {
         crosshair: { mode: 1 },
         handleScale: false,
         handleScroll: false,
+        localization: {
+          priceFormatter: fmtCompactUsd,
+        },
       })
 
       const series = chart.addAreaSeries({
