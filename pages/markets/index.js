@@ -26,6 +26,7 @@ import Footer from '../../components/Footer'
 import Sparkline from '../../components/Sparkline'
 import WatchlistStar from '../../components/WatchlistStar'
 import WatchlistWidget from '../../components/WatchlistWidget'
+import MarketCapChart from '../../components/MarketCapChart'
 import {
   getGlobalStats,
   getCoinsMarkets,
@@ -164,6 +165,7 @@ export default function MarketsPage({ globalStats, allCoins }) {
   const marketCap = globalStats?.total_market_cap?.usd
   const volume = globalStats?.total_volume?.usd
   const btcDom = globalStats?.market_cap_percentage?.btc
+  const ethDom = globalStats?.market_cap_percentage?.eth
   const capChange = globalStats?.market_cap_change_percentage_24h_usd
 
   const searchPlaceholder = coinIndexLoading
@@ -206,30 +208,36 @@ export default function MarketsPage({ globalStats, allCoins }) {
             )}
           </p>
 
-          <div className="markets-stats-grid">
-            <div className="markets-stat-card">
-              <div className="markets-stat-label">Total Market Cap</div>
-              <div className="markets-stat-value">{formatBigNumber(marketCap)}</div>
-              {capChange != null && (
-                <div className={`markets-stat-change ${capChange >= 0 ? 'up' : 'down'}`}>
-                  {formatPercent(capChange)}
-                </div>
-              )}
-            </div>
-            <div className="markets-stat-card">
-              <div className="markets-stat-label">24h Volume</div>
-              <div className="markets-stat-value">{formatBigNumber(volume)}</div>
-            </div>
-            <div className="markets-stat-card">
-              <div className="markets-stat-label">BTC Dominance</div>
-              <div className="markets-stat-value">
-                {btcDom != null ? btcDom.toFixed(2) + '%' : '—'}
+          <div className="markets-overview">
+            <div className="markets-overview-chart">
+              <div className="markets-overview-chart-head">
+                <span className="markets-overview-chart-title">Total Market Cap</span>
+                <span className="markets-overview-chart-value">{formatBigNumber(marketCap)}</span>
+                {capChange != null && (
+                  <span className={`markets-overview-chart-change ${capChange >= 0 ? 'up' : 'down'}`}>
+                    {formatPercent(capChange)}
+                  </span>
+                )}
               </div>
+              <MarketCapChart />
             </div>
-            <div className="markets-stat-card">
-              <div className="markets-stat-label">Active Cryptos</div>
-              <div className="markets-stat-value">
-                {globalStats?.active_cryptocurrencies?.toLocaleString() || '—'}
+
+            <div className="markets-overview-stats">
+              <div className="mini-stat">
+                <div className="mini-stat-label">24h Volume</div>
+                <div className="mini-stat-value">{formatBigNumber(volume)}</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat-label">BTC Dominance</div>
+                <div className="mini-stat-value">{btcDom != null ? btcDom.toFixed(1) + '%' : '—'}</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat-label">ETH Dominance</div>
+                <div className="mini-stat-value">{ethDom != null ? ethDom.toFixed(1) + '%' : '—'}</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat-label">Active Cryptos</div>
+                <div className="mini-stat-value">{globalStats?.active_cryptocurrencies?.toLocaleString() || '—'}</div>
               </div>
             </div>
           </div>
