@@ -5879,3 +5879,25 @@ body.light .ticker-change.down { color: #f44336; }
   text-align: right;
   margin-top: 8px;
 }
+/* ============================================================
+   MARKETS SPRINT 4 — polish (mobile table columns)
+   Append to the END of styles/globals.css
+   ============================================================ */
+
+/* On phones, hide secondary columns so the tables fit without a wide
+   horizontal scroll. Keep: rank, coin, price, 24h %. */
+@media (max-width: 640px) {
+  /* Prices table columns:
+     1 #  ·  2 Coin  ·  3 Price  ·  4 1h  ·  5 24h  ·  6 7d  ·  7 Volume  ·  8 Market Cap  ·  9 Spark */
+  .prices-table th:nth-child(4), .prices-table td:nth-child(4),
+  .prices-table th:nth-child(6), .prices-table td:nth-child(6),
+  .prices-table th:nth-child(7), .prices-table td:nth-child(7),
+  .prices-table th:nth-child(8), .prices-table td:nth-child(8),
+  .prices-table th:nth-child(9), .prices-table td:nth-child(9) { display: none; }
+
+  /* Movers table columns:
+     1 #  ·  2 Coin  ·  3 Price  ·  4 24h %  ·  5 Volume  ·  6 Market Cap  ·  7 Spark */
+  .movers-table th:nth-child(5), .movers-table td:nth-child(5),
+  .movers-table th:nth-child(6), .movers-table td:nth-child(6),
+  .movers-table th:nth-child(7), .movers-table td:nth-child(7) { display: none; }
+}
