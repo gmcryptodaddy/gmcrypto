@@ -59,6 +59,7 @@ export default function ConverterPage({ coins }) {
       symbol: f.symbol,
       name: f.name,
       priceUsd: null,
+      rate: f.rate, // fiat units per 1 USD — fallback if live rates fail
     }))
     return [...cryptoAssets, ...fiatAssets]
   }, [coins])
@@ -86,6 +87,8 @@ export default function ConverterPage({ coins }) {
         const btcInFrom = fiatRates.bitcoin?.[fromAsset.id]
         if (btcInUsd && btcInFrom) {
           amountUsd = num * (btcInUsd / btcInFrom)
+        } else if (fromAsset.rate) {
+          amountUsd = num / fromAsset.rate // fallback: hardcoded fiat-per-USD
         } else return 0
       }
     }
@@ -101,6 +104,7 @@ export default function ConverterPage({ coins }) {
       if (btcInUsd && btcInTo) {
         return amountUsd * (btcInTo / btcInUsd)
       }
+      if (toAsset.rate) return amountUsd * toAsset.rate // fallback
       return 0
     }
   }, [amount, fromAsset, toAsset, fiatRates])
