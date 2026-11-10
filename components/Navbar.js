@@ -16,6 +16,7 @@ const MARKETS_LINKS = [
   { label: 'Top Gainers', href: '/markets/gainers' },
   { label: 'Top Losers', href: '/markets/losers' },
   { label: 'Converter', href: '/markets/converter' },
+  { label: 'Mcap Calculator', href: '/markets/mcap-calculator' },
   { label: 'Exchanges', href: '/markets/exchanges' },
 ]
 
