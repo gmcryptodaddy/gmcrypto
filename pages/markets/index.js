@@ -289,7 +289,7 @@ export default function MarketsPage({ globalStats, allCoins }) {
                   No coins on this page.
                 </div>
               ) : (
-                <table className="markets-table">
+                <table className="markets-table prices-table">
                   <thead>
                     <tr>
                       <th onClick={() => handleSort('market_cap_rank')} className={thClass('market_cap_rank', 'sortable')}>#{sortArrow('market_cap_rank')}</th>
