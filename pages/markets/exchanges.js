@@ -31,6 +31,27 @@ const HYPERLIQUID_ENTRY = {
 
 const PARTNER_IDS = new Set(['binance', 'bybit_spot', 'bybit', 'okex', 'okx', 'hyperliquid'])
 
+// Hyperliquid is a perps DEX, so its 24h volume lives in CoinGecko's
+// /derivatives/exchanges endpoint, not /exchanges. Fetch it so the Volume
+// stat isn't blank.
+async function fetchHyperliquidVolumeBtc() {
+  try {
+    const headers = { Accept: 'application/json' }
+    if (process.env.COINGECKO_API_KEY) headers['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY
+    const res = await fetch(
+      'https://api.coingecko.com/api/v3/derivatives/exchanges?per_page=100&order=trade_volume_24h_btc_desc',
+      { headers }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const hl = Array.isArray(data) ? data.find(e => e.id === 'hyperliquid') : null
+    const v = hl?.trade_volume_24h_btc
+    return v != null ? Number(v) : null
+  } catch {
+    return null
+  }
+}
+
 export default function ExchangesPage({ exchanges, btcPriceUsd }) {
   return (
     <>
@@ -118,16 +139,18 @@ export default function ExchangesPage({ exchanges, btcPriceUsd }) {
 
 export async function getStaticProps() {
   try {
-    const [exchanges, btcData] = await Promise.all([
+    const [exchanges, btcData, hlVolBtc] = await Promise.all([
       getExchanges({ perPage: 20, page: 1 }),
       getSimplePrice('bitcoin', 'usd').catch(() => null),
+      fetchHyperliquidVolumeBtc(),
     ])
     const btcPriceUsd = btcData?.bitcoin?.usd || null
 
-    // Inject Hyperliquid if not already in the list
+    // Inject Hyperliquid (with its fetched volume) if not already in the list
     const list = exchanges || []
     const hasHyperliquid = list.some(e => e.id === 'hyperliquid')
-    const finalList = hasHyperliquid ? list : [...list, HYPERLIQUID_ENTRY]
+    const hlEntry = { ...HYPERLIQUID_ENTRY, trade_volume_24h_btc_normalized: hlVolBtc }
+    const finalList = hasHyperliquid ? list : [...list, hlEntry]
 
     return {
       props: {
